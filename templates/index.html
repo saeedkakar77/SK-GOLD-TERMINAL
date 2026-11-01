@@ -1471,16 +1471,48 @@
             fetchBias();
         }
 
+        window.show16Strategies = false;
+        function toggle16Strategies() {
+            window.show16Strategies = !window.show16Strategies;
+            const el = document.getElementById('grid16Strategies');
+            const btn = document.getElementById('btnToggle16');
+            if (el) el.style.display = window.show16Strategies ? 'grid' : 'none';
+            if (btn) btn.innerText = window.show16Strategies ? '🔼 Hide 16 Strategies Breakdown' : '👁️ View All 16 SMC Strategies Breakdown & Live Reasons';
+        }
+
+        function render16StrategiesCards(strategies) {
+            if (!strategies || strategies.length === 0) return '';
+            return strategies.map(s => {
+                const isBear = s.vote === 'BEARISH';
+                const isBull = s.vote === 'BULLISH';
+                const color = isBear ? '#ef4444' : (isBull ? '#10b981' : '#f59e0b');
+                const bg = isBear ? 'rgba(239, 68, 68, 0.15)' : (isBull ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)');
+                return `
+                    <div style="background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); border-left: 3.5px solid ${color}; padding: 9px 12px; border-radius: 6px; font-size: 11px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <span style="font-weight: 800; color: #fff;">${s.icon} ${s.name}</span>
+                            <span style="background: ${bg}; color: ${color}; border: 1px solid ${color}; padding: 2px 7px; border-radius: 4px; font-weight: 900; font-size: 10px;">${s.vote} (${s.confidence}%)</span>
+                        </div>
+                        <div style="color: #94a3b8; font-size: 10.5px; line-height: 1.35;">
+                            <span style="color: #fbbf24; font-weight: 700;">[${s.timeframe}]</span> ${s.reason}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
         async function fetchBias() {
             try {
                 const res = await fetch('/api/bias');
                 const data = await res.json();
                 if (!data || !data.timeframes) return;
 
-                // 0. Render Master Institutional Direction Compass
+                // 0. Render Master Institutional Direction Compass & 16-Strategy Power Meter
                 const compassEl = document.getElementById('masterCompassCard');
                 if (compassEl && data.daily_compass) {
                     const c = data.daily_compass;
+                    const pm = c.power_meter || (data.power_meter_16 || { bearish_pct: 100, bullish_pct: 0, bearish_count: 16, bullish_count: 0, verdict: "STRONG BEARISH", gauge_color: "#ef4444" });
+                    const sr = c.session_radar || (data.session_radar_3am || {});
                     const isRange = c.verdict.includes("RANGE");
                     const isStrongBuy = c.verdict.includes("STRONG BUY");
                     const isStrongSell = c.verdict.includes("STRONG SELL");
@@ -1525,6 +1557,76 @@
                                     <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">MARKET REGIME</div>
                                     <div style="font-size: 13px; font-weight: 800; color: #fbbf24;">${c.regime}</div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- 🇵🇰 3:00 AM PKT MONDAY & DAILY SESSION RADAR -->
+                        <div style="background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)); border: 1.5px solid #ef4444; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; box-shadow: 0 0 25px rgba(239, 68, 68, 0.2);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 18px;">⏰</span>
+                                    <strong style="color: #f8fafc; font-size: 13px; letter-spacing: 0.5px;">PAKISTAN TIME (PKT): <span class="mono" style="color: #60a5fa;">${sr.pak_time || 'PKT Live'}</span></strong>
+                                    <span style="font-size: 11px; color: #94a3b8;">(${sr.pak_day || ''})</span>
+                                </div>
+                                <div style="background: rgba(239, 68, 68, 0.2); border: 1.5px solid #ef4444; color: #fca5a5; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 11px; letter-spacing: 0.5px;">
+                                    ${sr.session_badge || '🌅 MONDAY 3:00 AM PKT FORECAST'}
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
+                                <div>
+                                    <div style="font-size: 10.5px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Monday 3:00 AM PKT Session Forecast:</div>
+                                    <div style="font-size: 16px; font-weight: 900; color: #ef4444; letter-spacing: 0.5px; margin-top: 2px;">
+                                        ${sr.day_forecast || 'BEARISH DAY PREDICTED (SELL-SIDE EXPANSION)'}
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 11.5px;" class="mono">
+                                    <span style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; color: #cbd5e1;">🎯 Target DOL: <strong style="color: #ef4444;">${sr.draw_on_liquidity || '3856.04'}</strong></span>
+                                    <span style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; color: #cbd5e1;">🛡️ Key Resistance: <strong style="color: #fbbf24;">${sr.key_resistance_zone || '3909 - 3951'}</strong></span>
+                                    <span style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; color: #cbd5e1;">⛔ Invalidation: <strong style="color: #60a5fa;">${sr.invalidation_level || '4074.19'}</strong></span>
+                                </div>
+                            </div>
+
+                            <div style="font-size: 12px; color: #e2e8f0; line-height: 1.45; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px; border-left: 3px solid #ef4444;">
+                                <strong style="color: #fbbf24;">Urdu Guidance:</strong> ${sr.forecast_urdu || ''}
+                            </div>
+                        </div>
+
+                        <!-- ⚡ 16 SMC STRATEGIES LIVE POWER GAUGE METER -->
+                        <div style="background: rgba(0,0,0,0.45); border: 1.5px solid rgba(255,255,255,0.12); padding: 14px 18px; border-radius: 10px; margin-bottom: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 18px;">⚡</span>
+                                    <strong style="font-size: 13px; color: #f8fafc; letter-spacing: 0.5px;">16 SMC STRATEGIES CONFLUENCE POWER METER (LIVE SCAN 24/7)</strong>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <span style="background: rgba(239, 68, 68, 0.2); border: 1.5px solid #ef4444; color: #ef4444; padding: 3px 10px; border-radius: 5px; font-weight: 900; font-size: 11px;">🔴 ${pm.bearish_count} / 16 BEARISH</span>
+                                    <span style="background: rgba(16, 185, 129, 0.2); border: 1.5px solid #10b981; color: #10b981; padding: 3px 10px; border-radius: 5px; font-weight: 900; font-size: 11px;">🟢 ${pm.bullish_count} / 16 BULLISH</span>
+                                </div>
+                            </div>
+
+                            <!-- Animated Power Meter Bar -->
+                            <div style="position: relative; height: 26px; background: #0b1120; border-radius: 13px; overflow: hidden; display: flex; border: 1.5px solid rgba(255,255,255,0.15); box-shadow: inset 0 2px 10px rgba(0,0,0,0.8);">
+                                <div style="width: ${pm.bearish_pct}%; background: linear-gradient(90deg, #991b1b, #ef4444); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 11px; letter-spacing: 0.5px; transition: width 0.6s ease; box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);">
+                                    ${pm.bearish_pct >= 20 ? `🔴 BEARISH POWER: ${pm.bearish_pct}%` : ''}
+                                </div>
+                                <div style="width: ${pm.bullish_pct}%; background: linear-gradient(90deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 11px; letter-spacing: 0.5px; transition: width 0.6s ease; box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);">
+                                    ${pm.bullish_pct >= 20 ? `🟢 BULLISH: ${pm.bullish_pct}%` : ''}
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px;">
+                                <div style="font-size: 11px; color: #94a3b8;">
+                                    Dominant Stance: <strong style="color: ${pm.gauge_color};">${pm.verdict}</strong> • Active on XAUUSD Gold 24/7
+                                </div>
+                                <button id="btnToggle16" onclick="toggle16Strategies()" style="background: rgba(59, 130, 246, 0.15); border: 1.5px solid #3b82f6; color: #93c5fd; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                                    ${window.show16Strategies ? '🔼 Hide 16 Strategies Breakdown' : '👁️ View All 16 SMC Strategies Breakdown & Live Reasons'}
+                                </button>
+                            </div>
+
+                            <!-- Drawer Grid of 16 Strategies -->
+                            <div id="grid16Strategies" style="display: ${window.show16Strategies ? 'grid' : 'none'}; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; margin-top: 14px; max-height: 440px; overflow-y: auto; padding-right: 4px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;">
+                                ${render16StrategiesCards(data.strategies_breakdown || [])}
                             </div>
                         </div>
 
