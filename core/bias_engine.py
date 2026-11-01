@@ -167,38 +167,72 @@ class ICTBiasEngine:
         bull_count = biases.count("BULLISH")
         bear_count = biases.count("BEARISH")
 
-        if bull_count == 4:
-            overall_bias = "STRONG BULLISH"
+        # Range / Consolidation Detector across higher and intraday timeframes
+        pct_in_daily_range = res_d.get("pct_in_range", 50.0)
+        recent_daily_range = (candles_d[-1].high - candles_d[-1].low) if candles_d else 25.0
+        avg_daily_range = (sum(c.high - c.low for c in candles_d[-10:]) / min(len(candles_d), 10)) if candles_d else 35.0
+        is_ranging = (35.0 <= pct_in_daily_range <= 65.0) and (recent_daily_range < 0.70 * avg_daily_range or bull_count == bear_count)
+
+        digits = 2 if ("XAU" in symbol.upper() or "BTC" in symbol.upper() or "ETH" in symbol.upper()) else 5
+
+        if is_ranging:
+            overall_bias = "RANGING / CONSOLIDATION"
+            confidence = 65
+            action = "SCALP RANGE BOUNDARIES (BUY DISCOUNT / SELL PREMIUM)"
+            regime = "CONSOLIDATION (EQUAL HIGHS & LOWS)"
+            badge_color = "#f59e0b"
+            today_rule = "Aaj market range / consolidation mein hai (No clear HTF trend). Breakouts chase na karein! Sirf Discount Lows par Scalp Buy aur Premium Highs par Scalp Sell karein jab tak Daily candle range se bahar na nikle."
+            scalp_advice = "SCALP BOTH SIDES (Range Extremes)"
+        elif bull_count == 4:
+            overall_bias = "STRONG BUY"
             confidence = 96
-            action = "STRONG BUY ON PULLBACKS"
+            action = "LOOK STRICTLY FOR BUY SIGNALS TODAY"
+            regime = "BULLISH EXPANSION (HIGH DEMAND)"
+            badge_color = "#10b981"
+            today_rule = "Aaj ka din 100% BUY side par hai! Higher Timeframes (Monthly, Weekly, Daily, H4) par Institutional Bullish Order Flow hai. M5/M15 Discount Pullback ya FVG Retest par Buy entry lein. Counter-trend Sell se parhez karein."
+            scalp_advice = "LOOK STRICTLY FOR BUY SETUPS"
         elif bull_count == 3:
-            overall_bias = "BULLISH"
+            overall_bias = "BUY (MODERATE BULLISH)"
             confidence = 82
-            action = "BUY ONLY (ALIGN WITH DOL)"
+            action = "BUY FAVORED (ALIGN WITH DOL)"
+            regime = "BULLISH REACTION / DISCOUNT EXPANSION"
+            badge_color = "#3b82f6"
+            today_rule = "Aaj market ka jhukaao BUY ki taraf hai. Discount zones (MSS/OB) par confirmation candle ke sath Buy trades ko priority dein."
+            scalp_advice = "BUY ON DIPS (Discount Pullbacks)"
         elif bear_count == 4:
-            overall_bias = "STRONG BEARISH"
+            overall_bias = "STRONG SELL"
             confidence = 96
-            action = "STRONG SELL ON RALLIES"
+            action = "LOOK STRICTLY FOR SELL SIGNALS TODAY"
+            regime = "BEARISH EXPANSION (HIGH SUPPLY)"
+            badge_color = "#ef4444"
+            today_rule = "Aaj ka din 100% SELL side par hai! Higher Timeframes (Monthly, Weekly, Daily, H4) par Institutional Bearish Order Flow hai. M5/M15 Premium Pullback ya Bearish FVG Retest par Sell entry lein. Counter-trend Buy se parhez karein."
+            scalp_advice = "LOOK STRICTLY FOR SELL SETUPS"
         elif bear_count == 3:
-            overall_bias = "BEARISH"
+            overall_bias = "SELL (MODERATE BEARISH)"
             confidence = 82
-            action = "SELL ONLY (ALIGN WITH DOL)"
+            action = "SELL FAVORED (ALIGN WITH DOL)"
+            regime = "BEARISH REACTION / LIQUIDITY DRAW"
+            badge_color = "#f97316"
+            today_rule = "Aaj market ka jhukaao SELL ki taraf hai. Premium zones (Resistance/OB) par rejection confirmation candle ke sath Sell trades ko priority dein."
+            scalp_advice = "SELL ON RALLIES (Premium Pullbacks)"
         else:
-            # Split / Conflicting
-            overall_bias = "NEUTRAL"
+            overall_bias = "NEUTRAL / MIXED"
             confidence = 54
-            action = "WAIT / STRICT CONFIRMATION"
+            action = "WAIT / STRICT CONFIRMATION REQUIRED"
+            regime = "LIQUIDITY ACCUMULATION"
+            badge_color = "#eab308"
+            today_rule = "HTF aur LTF mein mixed bias hai. A+ Vol Div aur strict confirmation candle ke baghair trade execute na karein."
+            scalp_advice = "WAIT OR SELECTIVE SCALP ONLY"
 
         # Primary Liquidity Target (Draw On Liquidity)
         live_p = data_feed.get_current_price(symbol)
         curr_price = live_p if live_p > 0 else (res_d["current_price"] if res_d["current_price"] > 0 else 3875.65)
-        digits = 2 if ("XAU" in symbol.upper() or "BTC" in symbol.upper() or "ETH" in symbol.upper()) else 5
 
-        if "BULLISH" in overall_bias:
+        if "BUY" in overall_bias:
             primary_dol = res_d["erl_bsl"]
             secondary_dol = res_w["erl_bsl"]
             invalidation = res_h4["erl_ssl"]
-        elif "BEARISH" in overall_bias:
+        elif "SELL" in overall_bias:
             primary_dol = res_d["erl_ssl"]
             secondary_dol = res_w["erl_ssl"]
             invalidation = res_h4["erl_bsl"]
@@ -206,6 +240,20 @@ class ICTBiasEngine:
             primary_dol = res_d["erl_bsl"]
             secondary_dol = res_d["erl_ssl"]
             invalidation = res_d["equilibrium"]
+
+        daily_compass = {
+            "verdict": overall_bias,
+            "badge_color": badge_color,
+            "regime": regime,
+            "action": action,
+            "today_rule": today_rule,
+            "scalp_advice": scalp_advice,
+            "intraday_bias": f"{res_d['bias']} (H4: {res_h4['bias']})",
+            "swing_bias": f"{res_m['bias']} (Weekly: {res_w['bias']})",
+            "confidence": confidence,
+            "primary_target": f"ERL {('BSL @ ' + str(round(res_d['erl_bsl'], digits))) if 'BUY' in overall_bias else ('SSL @ ' + str(round(res_d['erl_ssl'], digits)) if 'SELL' in overall_bias else 'PDH/PDL Range Ext')}",
+            "invalidation_level": round(invalidation, digits)
+        }
 
         # Build Institutional Scenarios
         bullish_scenario = {
@@ -229,6 +277,7 @@ class ICTBiasEngine:
             "overall_bias": overall_bias,
             "confidence": confidence,
             "action": action,
+            "daily_compass": daily_compass,
             "current_price": curr_price,
             "primary_dol": round(primary_dol, digits),
             "secondary_dol": round(secondary_dol, digits),

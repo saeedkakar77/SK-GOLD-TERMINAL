@@ -531,6 +531,11 @@
             </div>
         </div>
 
+        <!-- 🧭 TODAY'S MASTER INSTITUTIONAL DIRECTION COMPASS -->
+        <div id="masterCompassCard" style="margin-bottom: 16px; padding: 18px 22px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85)); border: 2px solid #3b82f6; border-radius: 12px; box-shadow: 0 4px 30px rgba(37, 99, 235, 0.25);">
+            <!-- Populated via fetchBias() -->
+        </div>
+
         <!-- 4-Timeframe Grid: Monthly, Weekly, Daily, H4 -->
         <div id="biasCardsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
             <!-- Populated via fetchBias() -->
@@ -687,6 +692,29 @@
                     <div style="font-size: 10px; color: #fbbf24; font-weight: 700;">NET PROFIT</div>
                     <div id="statNetR" style="font-size: 18px; font-weight: 800; color: #fbbf24;">+0.0R</div>
                 </div>
+            </div>
+
+            <!-- Trading Style Filter Bar (Scalping vs Intraday vs Swing) -->
+            <div id="styleFilterBar" style="display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; background: rgba(15, 23, 42, 0.85); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); align-items: center;">
+                <span style="font-size: 11px; font-weight: 800; color: #94a3b8; display: flex; align-items: center; gap: 4px; padding-right: 4px;">
+                    🎯 FILTER:
+                </span>
+                <button id="filterBtn_all" onclick="setStyleFilter('all')" style="background: #2563eb; color: #fff; border: 1px solid #3b82f6; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 0 12px rgba(37, 99, 235, 0.4); transition: all 0.2s;">
+                    <span>ALL SIGNALS</span>
+                    <span id="badgeCount_all" style="background: rgba(0,0,0,0.35); padding: 1px 6px; border-radius: 8px; font-size: 10px;">0</span>
+                </button>
+                <button id="filterBtn_scalp" onclick="setStyleFilter('scalp')" style="background: rgba(30, 41, 59, 0.6); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                    <span>⚡ SCALPING (M3-M15)</span>
+                    <span id="badgeCount_scalp" style="background: rgba(0,0,0,0.35); padding: 1px 6px; border-radius: 8px; font-size: 10px;">0</span>
+                </button>
+                <button id="filterBtn_intraday" onclick="setStyleFilter('intraday')" style="background: rgba(30, 41, 59, 0.6); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                    <span>📊 INTRADAY (M30-H4)</span>
+                    <span id="badgeCount_intraday" style="background: rgba(0,0,0,0.35); padding: 1px 6px; border-radius: 8px; font-size: 10px;">0</span>
+                </button>
+                <button id="filterBtn_swing" onclick="setStyleFilter('swing')" style="background: rgba(30, 41, 59, 0.6); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                    <span>👑 SWING (1D-1M)</span>
+                    <span id="badgeCount_swing" style="background: rgba(0,0,0,0.35); padding: 1px 6px; border-radius: 8px; font-size: 10px;">0</span>
+                </button>
             </div>
 
             <div class="signals-container" id="signalsFeed">
@@ -950,10 +978,39 @@
         }
 
         let currentSignalsTab = 'active';
+        let currentStyleFilter = 'all'; // 'all', 'scalp', 'intraday', 'swing'
         let cachedActiveSignals = [];
         let cachedHistorySignals = [];
         let cachedStats = {};
         let lastSignalsHash = '';
+
+        function getSignalStyle(tf) {
+            if (!tf) return 'scalp';
+            const t = tf.toLowerCase();
+            if (t === '1m' || t === '3m' || t === '5m' || t === '15m') return 'scalp';
+            if (t === '30m' || t === '1h' || t === '4h') return 'intraday';
+            return 'swing';
+        }
+
+        function setStyleFilter(style) {
+            currentStyleFilter = style;
+            ['all', 'scalp', 'intraday', 'swing'].forEach(s => {
+                const btn = document.getElementById(`filterBtn_${s}`);
+                if (!btn) return;
+                if (s === style) {
+                    btn.style.background = '#2563eb';
+                    btn.style.color = '#fff';
+                    btn.style.borderColor = '#3b82f6';
+                    btn.style.boxShadow = '0 0 12px rgba(37, 99, 235, 0.4)';
+                } else {
+                    btn.style.background = 'rgba(30, 41, 59, 0.6)';
+                    btn.style.color = '#94a3b8';
+                    btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    btn.style.boxShadow = 'none';
+                }
+            });
+            renderSignalsFeed();
+        }
 
         function switchSignalTab(tab) {
             currentSignalsTab = tab;
@@ -999,22 +1056,67 @@
             const container = document.getElementById('signalsFeed');
             if (!container) return;
 
+            const fullList = (currentSignalsTab === 'active') ? cachedActiveSignals : cachedHistorySignals;
+
+            // Update badge counts for each style filter
+            const countAll = fullList.length;
+            const countScalp = fullList.filter(s => getSignalStyle(s.timeframe) === 'scalp').length;
+            const countIntraday = fullList.filter(s => getSignalStyle(s.timeframe) === 'intraday').length;
+            const countSwing = fullList.filter(s => getSignalStyle(s.timeframe) === 'swing').length;
+
+            const bAll = document.getElementById('badgeCount_all');
+            const bScalp = document.getElementById('badgeCount_scalp');
+            const bIntraday = document.getElementById('badgeCount_intraday');
+            const bSwing = document.getElementById('badgeCount_swing');
+            if (bAll) bAll.innerText = countAll;
+            if (bScalp) bScalp.innerText = countScalp;
+            if (bIntraday) bIntraday.innerText = countIntraday;
+            if (bSwing) bSwing.innerText = countSwing;
+
+            // Apply style filter
+            let displayList = fullList;
+            if (currentStyleFilter !== 'all') {
+                displayList = fullList.filter(s => getSignalStyle(s.timeframe) === currentStyleFilter);
+            }
+
             if (currentSignalsTab === 'active') {
-                if (cachedActiveSignals.length === 0) {
+                if (displayList.length === 0) {
+                    let emptyTitle = '⚡ Scanning Live Gold Market (XAUUSD)...';
+                    let emptyDesc = 'Waiting for institutional confirmation candle to trigger an Order Block, FVG, Unicorn, SMT, or BBMA setup on XAUUSD.';
+                    if (currentStyleFilter === 'scalp') {
+                        emptyTitle = '⚡ No Active Scalping Signals';
+                        emptyDesc = 'Next SCALPING setup will trigger on M3, M5, or M15 candle close (AOX, Unicorn, FVG, or Liquidity Sweep).';
+                    } else if (currentStyleFilter === 'intraday') {
+                        emptyTitle = '📊 No Active Intraday Signals';
+                        emptyDesc = 'Next INTRADAY setup will trigger on M30, H1, or H4 candle close (True Order Block, MSNR SBR/RBS Flip, or CRT).';
+                    } else if (currentStyleFilter === 'swing') {
+                        emptyTitle = '👑 No Active Swing Signals';
+                        emptyDesc = 'Next SWING setup will trigger on Daily or Weekly candle close (HTF Major Sweep, BBMA Triad, or Volume Flow).';
+                    }
                     container.innerHTML = `
                         <div class="empty-feed">
                             <div class="radar-box"></div>
-                            <div style="font-weight: 700; font-size: 16px; margin-bottom: 6px; color: #fbbf24;">⚡ Scanning Live Gold Market (XAUUSD)...</div>
-                            <p style="font-size: 13px; color: #94a3b8;">Waiting for institutional confirmation candle to trigger an Order Block, FVG, Unicorn, SMT, or BBMA setup on XAUUSD.</p>
+                            <div style="font-weight: 700; font-size: 16px; margin-bottom: 6px; color: #fbbf24;">${emptyTitle}</div>
+                            <p style="font-size: 13px; color: #94a3b8;">${emptyDesc}</p>
                         </div>
                     `;
                     return;
                 }
 
                 let html = '';
-                cachedActiveSignals.forEach(sig => {
+                displayList.forEach(sig => {
                     const isBuy = sig.action === 'BUY';
                     const isTpHit = (sig.status === 'TP1_HIT' || sig.tp1_hit);
+                    const sigStyle = getSignalStyle(sig.timeframe);
+
+                    let styleBadge = '';
+                    if (sigStyle === 'scalp') {
+                        styleBadge = `<span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; padding: 3px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; letter-spacing: 0.5px;">⚡ SCALPING</span>`;
+                    } else if (sigStyle === 'intraday') {
+                        styleBadge = `<span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; padding: 3px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; letter-spacing: 0.5px;">📊 INTRADAY</span>`;
+                    } else {
+                        styleBadge = `<span style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7; padding: 3px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; letter-spacing: 0.5px;">👑 SWING</span>`;
+                    }
 
                     const goldBadge = `
                         <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 900; font-size: 11px; padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0.5px; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);">
@@ -1061,9 +1163,10 @@
                     html += `
                         <div class="signal-card ${isBuy ? 'buy' : 'sell'}" style="${cardBorder}">
                             <div class="signal-header">
-                                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                     <span class="signal-badge ${isBuy ? 'badge-buy' : 'badge-sell'}">${sig.action}</span>
                                     <span class="mono" style="font-weight: 800; font-size: 16px;">${sig.symbol} [${sig.timeframe.toUpperCase()}]</span>
+                                    ${styleBadge}
                                     ${goldBadge}
                                     ${ultraBadge}
                                 </div>
@@ -1105,19 +1208,19 @@
 
             } else {
                 // HISTORY TAB RENDERING
-                if (cachedHistorySignals.length === 0) {
+                if (displayList.length === 0) {
                     container.innerHTML = `
                         <div style="text-align: center; padding: 45px 20px; color: #94a3b8;">
                             <div style="font-size: 36px; margin-bottom: 10px;">📜</div>
-                            <div style="font-size: 16px; font-weight: 700; color: #cbd5e1;">No Closed Trades in History Yet</div>
-                            <p style="font-size: 13px; margin-top: 6px; color: #64748b;">Completed Gold trades that hit TP 2 (+3.0R) or SL (-1.0R) will appear here automatically.</p>
+                            <div style="font-size: 16px; font-weight: 700; color: #cbd5e1;">No Closed Trades in this Filter</div>
+                            <p style="font-size: 13px; margin-top: 6px; color: #64748b;">Completed Gold trades matching this style will appear here automatically.</p>
                         </div>
                     `;
                     return;
                 }
 
                 let html = '';
-                cachedHistorySignals.forEach(sig => {
+                displayList.forEach(sig => {
                     const isWin = (sig.result === 'WIN' || sig.tp2_hit);
                     const outcomeColor = isWin ? '#10b981' : '#ef4444';
                     const outcomeBg = isWin ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)';
@@ -1126,15 +1229,26 @@
                     const cardBorder = isWin 
                         ? 'border: 1.5px solid #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);' 
                         : 'border: 1.5px solid #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);';
+                    const sigStyle = getSignalStyle(sig.timeframe);
+
+                    let styleBadge = '';
+                    if (sigStyle === 'scalp') {
+                        styleBadge = `<span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; padding: 2px 7px; border-radius: 4px; font-weight: 800; font-size: 10px;">⚡ SCALPING</span>`;
+                    } else if (sigStyle === 'intraday') {
+                        styleBadge = `<span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; padding: 2px 7px; border-radius: 4px; font-weight: 800; font-size: 10px;">📊 INTRADAY</span>`;
+                    } else {
+                        styleBadge = `<span style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7; padding: 2px 7px; border-radius: 4px; font-weight: 800; font-size: 10px;">👑 SWING</span>`;
+                    }
 
                     html += `
                         <div class="signal-card" style="${cardBorder}; background: rgba(15, 23, 42, 0.85);">
                             <div class="signal-header">
-                                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                     <span style="background: ${outcomeBg}; border: 1.5px solid ${outcomeBorder}; color: ${outcomeColor}; font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 6px; letter-spacing: 0.5px;">
                                         ${outcomeTitle}
                                     </span>
                                     <span class="mono" style="font-weight: 800; font-size: 15px;">${sig.action} ${sig.symbol} [${sig.timeframe.toUpperCase()}]</span>
+                                    ${styleBadge}
                                 </div>
                                 <div class="signal-meta mono" style="font-size: 11px;">
                                     <span>Closed: ${sig.closed_at || sig.timestamp}</span>
@@ -1150,6 +1264,32 @@
                             </div>
 
                             <div class="signal-levels mono">
+                                <div class="level-box">
+                                    <div class="level-label">ENTRY</div>
+                                    <div class="level-val val-entry">${sig.entry_price}</div>
+                                </div>
+                                <div class="level-box">
+                                    <div class="level-label">STOP LOSS</div>
+                                    <div class="level-val val-sl">${sig.stop_loss}</div>
+                                </div>
+                                <div class="level-box">
+                                    <div class="level-label">EXIT / CLOSED PRICE</div>
+                                    <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${sig.closed_price || sig.take_profit_2}</div>
+                                </div>
+                                <div class="level-box">
+                                    <div class="level-label">PNL PROFIT / LOSS</div>
+                                    <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${sig.pnl_r >= 0 ? '+' : ''}${sig.pnl_r || (isWin ? 3.0 : -1.0)}R</div>
+                                </div>
+                            </div>
+
+                            <div class="signal-reason">
+                                <strong>ORIGINAL SETUP:</strong> ${sig.reason}
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
                                 <div class="level-box">
                                     <div class="level-label">ENTRY</div>
                                     <div class="level-val val-entry">${sig.entry_price}</div>
@@ -1300,6 +1440,103 @@
                 const res = await fetch('/api/bias');
                 const data = await res.json();
                 if (!data || !data.timeframes) return;
+
+                // 0. Render Master Institutional Direction Compass
+                const compassEl = document.getElementById('masterCompassCard');
+                if (compassEl && data.daily_compass) {
+                    const c = data.daily_compass;
+                    const isRange = c.verdict.includes("RANGE");
+                    const isStrongBuy = c.verdict.includes("STRONG BUY");
+                    const isStrongSell = c.verdict.includes("STRONG SELL");
+                    const isBuy = c.verdict.includes("BUY");
+                    const isSell = c.verdict.includes("SELL");
+
+                    let icon = isRange ? '⚖️' : (isStrongBuy ? '🚀' : (isStrongSell ? '🩸' : (isBuy ? '🟢' : '🔴')));
+                    let badgeBg = isRange ? 'linear-gradient(135deg, #f59e0b, #d97706)' 
+                                : (isStrongBuy ? 'linear-gradient(135deg, #10b981, #059669)'
+                                : (isStrongSell ? 'linear-gradient(135deg, #ef4444, #b91c1c)'
+                                : (isBuy ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'linear-gradient(135deg, #f97316, #c2410c)')));
+
+                    compassEl.innerHTML = `
+                        <!-- Top Header: Master Verdict & Confluence -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 14px; margin-bottom: 14px;">
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                <div style="font-size: 34px; padding: 8px 12px; background: rgba(0,0,0,0.5); border-radius: 12px; border: 1.5px solid ${c.badge_color}; box-shadow: 0 0 20px ${c.badge_color}33;">
+                                    ${icon}
+                                </div>
+                                <div>
+                                    <div style="font-size: 11px; font-weight: 800; color: #94a3b8; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+                                        <span>TODAY'S INSTITUTIONAL DIRECTION (ALL 16 STRATEGIES & MTF CONFLUENCE)</span>
+                                        <span class="dot-pulse" style="background: ${c.badge_color};"></span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px; flex-wrap: wrap;">
+                                        <span style="background: ${badgeBg}; color: #fff; font-size: 15px; font-weight: 900; padding: 4px 14px; border-radius: 6px; letter-spacing: 0.5px; box-shadow: 0 0 15px ${c.badge_color}55;">
+                                            ${c.verdict}
+                                        </span>
+                                        <span style="font-size: 14px; font-weight: 800; color: #f8fafc;">
+                                            ${c.action}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <div style="background: rgba(0,0,0,0.4); border: 1.5px solid rgba(255,255,255,0.1); padding: 8px 14px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">CONFLUENCE</div>
+                                    <div style="font-size: 15px; font-weight: 900; color: ${c.badge_color};">${c.confidence}% CONF</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.4); border: 1.5px solid rgba(255,255,255,0.1); padding: 8px 14px; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">MARKET REGIME</div>
+                                    <div style="font-size: 13px; font-weight: 800; color: #fbbf24;">${c.regime}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rule of the Day Box (Actionable Urdu + English Instruction) -->
+                        <div style="background: rgba(15, 23, 42, 0.95); border-left: 4px solid ${c.badge_color}; padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                            <span style="font-size: 24px;">💡</span>
+                            <div style="font-size: 12.5px; color: #e2e8f0; line-height: 1.5;">
+                                <strong style="color: #fbbf24; font-size: 13px;">CURRENT DAY EXECUTION RULE:</strong>
+                                <span style="display: block; margin-top: 2px;">${c.today_rule}</span>
+                            </div>
+                        </div>
+
+                        <!-- 3-Pillar Breakdown: Scalp vs Intraday vs Swing -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; font-size: 11.5px;">
+                            <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <strong style="color: #fbbf24;">⚡ SCALPING (M3 - M15)</strong>
+                                    <span style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 10px;">LTF TACTICAL</span>
+                                </div>
+                                <div style="color: #cbd5e1;">${c.scalp_advice}</div>
+                            </div>
+
+                            <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <strong style="color: #60a5fa;">📊 INTRADAY (M30 - H4)</strong>
+                                    <span style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 10px;">DAILY FLOW</span>
+                                </div>
+                                <div style="color: #cbd5e1;">${c.intraday_bias}</div>
+                            </div>
+
+                            <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <strong style="color: #c084fc;">👑 SWING (1D - Monthly)</strong>
+                                    <span style="background: rgba(168, 85, 247, 0.15); color: #c084fc; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 10px;">MACRO TREND</span>
+                                </div>
+                                <div style="color: #cbd5e1;">${c.swing_bias}</div>
+                            </div>
+
+                            <div style="background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; border-radius: 8px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <strong style="color: #10b981;">🎯 ERL / IRL TARGET (DOL)</strong>
+                                    <span style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 10px;">OBJECTIVE</span>
+                                </div>
+                                <div style="color: #cbd5e1;"><span class="mono" style="color: #fff; font-weight: 800;">${c.primary_target}</span> | Inv: <span class="mono">${c.invalidation_level}</span></div>
+                            </div>
+                        </div>
+                    `;
+                }
 
                 // 1. Master Bias Header
                 const isBull = data.overall_bias.includes("BULLISH");

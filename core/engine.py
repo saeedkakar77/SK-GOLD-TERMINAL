@@ -94,7 +94,8 @@ class SignalEngine:
                 closed_price=3895.20,
                 live_status_note="🟢 FULL WIN: TP 2 Hit @ 3895.20 (+3.0R)",
                 is_ultra_strong=True,
-                vol_div="Regular Bullish Vol Div"
+                vol_div="Regular Bullish Vol Div",
+                style="scalp"
             ),
             Signal(
                 id="hist_xau_2",
@@ -118,7 +119,8 @@ class SignalEngine:
                 closed_price=3866.50,
                 live_status_note="🟢 FULL WIN: TP 2 Hit @ 3866.50 (+3.0R)",
                 is_ultra_strong=True,
-                vol_div="Regular Bearish Vol Div"
+                vol_div="Regular Bearish Vol Div",
+                style="scalp"
             ),
             Signal(
                 id="hist_xau_3",
@@ -142,7 +144,8 @@ class SignalEngine:
                 closed_price=3878.00,
                 live_status_note="🟢 FULL WIN: TP 2 Hit @ 3878.00 (+3.0R)",
                 is_ultra_strong=True,
-                vol_div="Regular Bullish Vol Div"
+                vol_div="Regular Bullish Vol Div",
+                style="intraday"
             ),
             Signal(
                 id="hist_xau_4",
@@ -165,7 +168,8 @@ class SignalEngine:
                 closed_price=3890.00,
                 live_status_note="🔴 SL Hit @ 3890.00 (-1.0R Loss)",
                 is_ultra_strong=False,
-                vol_div=None
+                vol_div=None,
+                style="scalp"
             )
         ]
         self.signals.extend(sample_history)
@@ -201,6 +205,18 @@ class SignalEngine:
                         p["enabled"] = enabled
                     break
 
+    def _enrich_signal(self, s: Signal) -> Dict:
+        d = s.__dict__.copy()
+        if "style" not in d or not d["style"]:
+            tf = str(s.timeframe).lower()
+            if tf in ["1m", "3m", "5m", "15m"]:
+                d["style"] = "scalp"
+            elif tf in ["30m", "1h", "4h"]:
+                d["style"] = "intraday"
+            else:
+                d["style"] = "swing"
+        return d
+
     def get_signals(self) -> List[Dict]:
         with self.lock:
             # Active signals first, then history
@@ -209,19 +225,19 @@ class SignalEngine:
             active.sort(key=lambda s: s.timestamp, reverse=True)
             closed.sort(key=lambda s: s.closed_at or s.timestamp, reverse=True)
             combined = active + closed
-            return [s.__dict__ for s in combined]
+            return [self._enrich_signal(s) for s in combined]
 
     def get_active_signals(self) -> List[Dict]:
         with self.lock:
             active = [s for s in self.signals if s.status in ["ACTIVE", "TP1_HIT"]]
             active.sort(key=lambda s: s.timestamp, reverse=True)
-            return [s.__dict__ for s in active]
+            return [self._enrich_signal(s) for s in active]
 
     def get_signal_history(self) -> List[Dict]:
         with self.lock:
             closed = [s for s in self.signals if s.status not in ["ACTIVE", "TP1_HIT"]]
             closed.sort(key=lambda s: s.closed_at or s.timestamp, reverse=True)
-            return [s.__dict__ for s in closed]
+            return [self._enrich_signal(s) for s in closed]
 
     def get_history_stats(self) -> Dict:
         with self.lock:
@@ -421,6 +437,13 @@ class SignalEngine:
                     if sig_key not in self.seen_signal_signatures:
                         self.seen_signal_signatures.add(sig_key)
                         sig.status = "ACTIVE"
+                        tf_lower = str(sig.timeframe).lower()
+                        if tf_lower in ["1m", "3m", "5m", "15m"]:
+                            sig.style = "scalp"
+                        elif tf_lower in ["30m", "1h", "4h"]:
+                            sig.style = "intraday"
+                        else:
+                            sig.style = "swing"
                         self.signals.append(sig)
                         status_str = f" [ULTRA STRONG VOL DIV]" if sig.is_ultra_strong else ""
                         print(f"[NEW GOLD SIGNAL] {sig.action} on {sig.symbol} [{sig.timeframe.upper()}]{status_str} via {sig.strategy_name} @ {sig.entry_price}")
@@ -465,6 +488,14 @@ class SignalEngine:
         ]
         s_id, s_name, s_reason = random.choice(demo_variants)
 
+        tf_lower = str(self.active_timeframe).lower()
+        if tf_lower in ["1m", "3m", "5m", "15m"]:
+            sig_style = "scalp"
+        elif tf_lower in ["30m", "1h", "4h"]:
+            sig_style = "intraday"
+        else:
+            sig_style = "swing"
+
         sig = Signal(
             id=str(uuid.uuid4())[:8],
             strategy_id=s_id,
@@ -479,7 +510,8 @@ class SignalEngine:
             reason=s_reason,
             timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             vol_div=f"Regular {'Bullish' if is_buy else 'Bearish'} Vol Div (Institutional Flow)",
-            is_ultra_strong=True
+            is_ultra_strong=True,
+            style=sig_style
         )
         with self.lock:
             self.signals.append(sig)
