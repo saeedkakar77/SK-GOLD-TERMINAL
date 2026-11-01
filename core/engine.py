@@ -215,6 +215,32 @@ class SignalEngine:
                 d["style"] = "intraday"
             else:
                 d["style"] = "swing"
+
+        curr_p = self.data_feed.get_current_price("XAUUSD")
+        if curr_p <= 0:
+            curr_p = d.get("entry_price", 3875.64)
+
+        risk = abs(d.get("entry_price", 0) - d.get("stop_loss", 0))
+        if risk <= 0:
+            risk = 6.50
+
+        if d.get("status") in ["ACTIVE", "TP1_HIT"]:
+            diff = (curr_p - d["entry_price"]) if d["action"] == "BUY" else (d["entry_price"] - curr_p)
+            cur_r = diff / risk
+            d["pnl_pts"] = round(diff, 2)
+            d["pnl_r"] = round(cur_r, 2)
+            d["pnl_usd"] = round(diff * 100.0, 2)  # Standard 1.0 lot ($100 per point)
+            d["current_market_price"] = round(curr_p, 2)
+            d["pnl_status"] = "PROFIT" if diff >= 0 else "DRAWDOWN"
+        else:
+            pnl_r = d.get("pnl_r", 3.0 if d.get("result") == "WIN" else -1.0)
+            pts = round(pnl_r * risk, 2)
+            d["pnl_pts"] = pts
+            d["pnl_r"] = round(pnl_r, 2)
+            d["pnl_usd"] = round(pts * 100.0, 2)
+            d["current_market_price"] = d.get("closed_price", curr_p)
+            d["pnl_status"] = "PROFIT" if pnl_r > 0 else "LOSS"
+
         return d
 
     def get_signals(self) -> List[Dict]:
@@ -242,17 +268,33 @@ class SignalEngine:
     def get_history_stats(self) -> Dict:
         with self.lock:
             closed = [s for s in self.signals if s.status not in ["ACTIVE", "TP1_HIT"]]
+            active = [s for s in self.signals if s.status in ["ACTIVE", "TP1_HIT"]]
             total = len(closed)
             wins = sum(1 for s in closed if s.result == "WIN")
             losses = sum(1 for s in closed if s.result == "LOSS")
             net_r = sum((s.pnl_r or 0.0) for s in closed)
             win_rate = (wins / total * 100.0) if total > 0 else 0.0
+
+            curr_p = self.data_feed.get_current_price("XAUUSD")
+            active_floating_r = 0.0
+            active_floating_pts = 0.0
+            active_floating_usd = 0.0
+            for s in active:
+                risk = abs(s.entry_price - s.stop_loss) or 6.50
+                diff = (curr_p - s.entry_price) if s.action == "BUY" else (s.entry_price - curr_p)
+                active_floating_pts += diff
+                active_floating_r += (diff / risk)
+                active_floating_usd += (diff * 100.0)
+
             return {
                 "total_closed": total,
                 "wins": wins,
                 "losses": losses,
                 "win_rate": round(win_rate, 1),
-                "net_r": round(net_r, 1)
+                "net_r": round(net_r, 1),
+                "active_floating_r": round(active_floating_r, 2),
+                "active_floating_pts": round(active_floating_pts, 2),
+                "active_floating_usd": round(active_floating_usd, 2)
             }
 
     def _update_signal_statuses(self):

@@ -137,6 +137,13 @@ class TradingAppHandler(BaseHTTPRequestHandler):
                 self._send_json(engine.get_signal_history())
             elif self.path == "/api/bias":
                 self._send_json(engine.get_bias_report())
+            elif self.path == "/api/pinescript":
+                pine_file = os.path.join(os.path.dirname(__file__), "SK_PERFECT_ENTRY_WITH_LIVE_PNL_TRADINGVIEW.pine")
+                script_txt = ""
+                if os.path.exists(pine_file):
+                    with open(pine_file, "r", encoding="utf-8") as pf:
+                        script_txt = pf.read()
+                self._send_json({"script": script_txt, "filename": "SK_PERFECT_ENTRY_WITH_LIVE_PNL_TRADINGVIEW.pine"})
             elif self.path == "/api/pairs":
                 self._send_json(engine.get_pairs())
             elif self.path == "/api/info":

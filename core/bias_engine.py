@@ -74,38 +74,50 @@ class ICTBiasEngine:
                 break
 
         # 5. Market Structure & Liquidity Delivery (ERL to IRL or IRL to ERL)
-        # Check if recent candle swept SSL or BSL
-        swept_ssl = any(c.low < prev_low and c.close > prev_low for c in candles[-3:])
-        swept_bsl = any(c.high > prev_high and c.close < prev_high for c in candles[-3:])
+        # Real Institutional Liquidity Sweep (Major Swing level pierced and rejected)
+        swept_ssl_major = (curr.low < erl_ssl and curr.close > erl_ssl)
+        swept_bsl_major = (curr.high > erl_bsl and curr.close < erl_bsl)
 
         ema20 = sum(c.close for c in candles[-20:]) / 20.0 if len(candles) >= 20 else eq
         ema50 = sum(c.close for c in candles[-50:]) / 50.0 if len(candles) >= 50 else ema20
 
-        # Structural direction
-        is_above_emas = price > ema20 and price > ema50
-        is_below_emas = price < ema20 and price < ema50
+        # Structural direction & institutional delivery
+        is_above_emas = (price >= ema20 and price >= ema50)
+        is_below_emas = (price <= ema20 and price <= ema50)
 
-        if swept_ssl or (is_above_emas and price < eq) or (price > ema20 and curr.close > prev.high):
-            bias = "BULLISH"
-            dol = erl_bsl
-            dol_type = "BSL (Buy-Side Liquidity)"
-            narrative = f"Price reacted from {zone} / SSL sweep. Institutional delivery expanding from IRL towards ERL ({dol_type} @ {dol:.2f})."
-        elif swept_bsl or (is_below_emas and price > eq) or (price < ema20 and curr.close < prev.low):
+        if swept_bsl_major or is_below_emas or (price < ema20 and curr.close <= prev.close):
             bias = "BEARISH"
             dol = erl_ssl
             dol_type = "SSL (Sell-Side Liquidity)"
-            narrative = f"Price reacted from {zone} / BSL sweep. Institutional delivery expanding from IRL towards ERL ({dol_type} @ {dol:.2f})."
+            narrative = f"Price delivering lower below EMA dynamic resistance. Institutional flow expanding towards ERL ({dol_type} @ {dol:.2f})."
+        elif swept_ssl_major or is_above_emas or (price > ema20 and curr.close >= prev.close):
+            bias = "BULLISH"
+            dol = erl_bsl
+            dol_type = "BSL (Buy-Side Liquidity)"
+            narrative = f"Price delivering higher above EMA dynamic support. Institutional flow expanding towards ERL ({dol_type} @ {dol:.2f})."
         else:
-            if price >= eq:
-                bias = "BEARISH"
-                dol = erl_ssl
-                dol_type = "SSL (Internal Sell Draw)"
-                narrative = f"Price holding in Premium ({pct_in_range:.0f}%). Potential draw toward equilibrium and SSL @ {dol:.2f}."
+            if price <= eq:
+                if price <= ema20:
+                    bias = "BEARISH"
+                    dol = erl_ssl
+                    dol_type = "SSL (Sell-Side Liquidity)"
+                    narrative = f"Price expanding downward in Discount towards Sell-Side Liquidity pool @ {dol:.2f}."
+                else:
+                    bias = "BULLISH"
+                    dol = erl_bsl
+                    dol_type = "BSL (Buy-Side Liquidity)"
+                    narrative = f"Price reacting from Discount with bullish pullback towards Equilibrium."
             else:
-                bias = "BULLISH"
-                dol = erl_bsl
-                dol_type = "BSL (Internal Buy Draw)"
-                narrative = f"Price holding in Discount ({pct_in_range:.0f}%). Potential draw toward equilibrium and BSL @ {dol:.2f}."
+                if price >= ema20:
+                    bias = "BULLISH"
+                    dol = erl_bsl
+                    dol_type = "BSL (Buy-Side Liquidity)"
+                    narrative = f"Price expanding upward in Premium towards Buy-Side Liquidity pool @ {dol:.2f}."
+                else:
+                    bias = "BEARISH"
+                    dol = erl_ssl
+                    dol_type = "SSL (Sell-Side Liquidity)"
+                    narrative = f"Price reacting from Premium with bearish rejection towards Equilibrium."
 
         return {
             "tf": tf_label,
@@ -282,7 +294,7 @@ class ICTBiasEngine:
             "today_rule": today_rule,
             "scalp_advice": scalp_advice,
             "intraday_bias": f"{res_d['bias']} (H4: {res_h4['bias']})",
-            "swing_bias": f"{res_m['bias']} (Weekly: {res_w['bias']})",
+            "swing_bias": f"{res_w['bias']} (Monthly: {res_m['bias']})",
             "confidence": confidence,
             "primary_target": f"ERL {('BSL @ ' + str(round(res_d['erl_bsl'], digits))) if 'BUY' in overall_bias else ('SSL @ ' + str(round(res_d['erl_ssl'], digits)) if 'SELL' in overall_bias else 'PDH/PDL Range Ext')}",
             "invalidation_level": round(invalidation, digits),

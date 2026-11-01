@@ -1,0 +1,3633 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+
+// © SK - True Valid Order Blocks (OB) Engine with Multi-HTF Confluence [Conflict Free - Ultra Optimized]
+
+
+
+//@version=6     
+
+indicator("PERFECT ENTRY BY SK ", shorttitle = "PERFECT ENTRY BY SK", overlay = true, max_bars_back = 1000, max_lines_count = 500, max_labels_count = 500)
+
+       
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 1. ORDER BLOCK CONFIGURATION INPUTS
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+GRP_OB = "★ True Valid Order Blocks (OB) Configuration"
+
+showOrderBlocks      = input.bool(true, "⚡ Enable True Valid Order Blocks (OBs)", group = GRP_OB, tooltip = "Wave origin par bane Bullish (+OB) aur Bearish (-OB) ko identify karta hai.")
+
+obRequireFvg         = input.bool(true, "Require FVG (True Valid OB Only)", group = GRP_OB, tooltip = "Sirf unhi candles ko mark karega jinhone Fair Value Gap (FVG) ke sath impulse start kiya ho.")
+
+deleteObOnBreakClose = input.bool(true, "Auto-Delete OB on Candle Close Break", group = GRP_OB, tooltip = "Agar candle close Order Block ke bahar ho jaye to use chart se delete kar dega.")
+
+showObLabels         = input.bool(true, "Show OB Center Labels", group = GRP_OB)
+
+obLabelSize          = input.string("Small", "OB Label Size", options = ["Tiny", "Small", "Normal", "Large"], group = GRP_OB)
+
+extendObToMarket     = input.bool(true, "Extend Untested OBs to Live Bar", group = GRP_OB)
+
+obLineWidth          = input.int(1, "OB Line Width", minval = 1, maxval = 3, group = GRP_OB)
+
+maxObHistory         = input.int(20, "Max Active OBs on Chart", minval = 2, maxval = 50, group = GRP_OB)
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 2. MULTI-TIMEFRAME (HTF) CONFLUENCE INPUTS
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+GRP_HTF = "★ Multi-Timeframe (HTF) OB Confluence"
+
+showHtfObConfluence = input.bool(true, "⚡ Enable Multi-HTF OB Confluence in Labels", group = GRP_HTF, tooltip = "Current timeframe se bade sabhi timeframes ke Order Blocks ko scan karke label mein likhega.")
+
+htfObProximity      = input.float(0.5, "Proximity Distance (ATR)", minval = 0.0, maxval = 3.0, step = 0.1, group = GRP_HTF)
+
+htfObMatchMode      = input.string("Same Direction Only", "HTF Match Direction", options = ["Same Direction Only", "Any HTF OB (Same or Opposite)"], group = GRP_HTF)
+
+
+
+ob_check_3m  = input.bool(true, "3m",  inline = "tf_m", group = GRP_HTF)
+
+ob_check_5m  = input.bool(true, "5m",  inline = "tf_m", group = GRP_HTF)
+
+ob_check_15m = input.bool(true, "15m", inline = "tf_m", group = GRP_HTF)
+
+ob_check_30m = input.bool(true, "30m", inline = "tf_m", group = GRP_HTF)
+
+
+
+ob_check_1h  = input.bool(true, "1H",  inline = "tf_h", group = GRP_HTF)
+
+ob_check_4h  = input.bool(true, "4H",  inline = "tf_h", group = GRP_HTF)
+
+ob_check_1d  = input.bool(true, "1D",  inline = "tf_h", group = GRP_HTF)
+
+
+
+GRP_OB_COL = "★ Order Block Colors & Visual Styling"
+
+bullObColorUntested  = input.color(color.new(#089981, 80), "Bullish OB Fill", group = GRP_OB_COL)
+
+bullObBorderUntested = input.color(#089981, "Bullish OB Border", group = GRP_OB_COL)
+
+bearObColorUntested  = input.color(color.new(#f23645, 80), "Bearish OB Fill", group = GRP_OB_COL)
+
+bearObBorderUntested = input.color(#f23645, "Bearish OB Border", group = GRP_OB_COL)
+
+obTestedBgColor      = input.color(color.new(color.gray, 88), "Tested OB Fill", group = GRP_OB_COL)
+
+obTestedBorderColor  = input.color(color.new(color.gray, 30), "Tested OB Border", group = GRP_OB_COL)
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 3. FVG CONFIGURATION INPUTS
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+grp_main  = "General Settings"
+
+grp_htf   = "★ Multi-Timeframe (HTF) FVG Confluence"
+
+grp_fvg   = "FVG Detection"
+
+grp_zone  = "Zone Height Normalization"
+
+grp_viz   = "Visualization"
+
+grp_lbl   = "Labels"
+
+
+
+enable_fvg = input.bool(true, "FVG ON / OFF", group = grp_main)
+
+show_htf_confluence = input.bool(true, "⚡ Enable Multi-HTF FVG in Labels", group = grp_htf)
+
+htf_tol_mult        = input.float(0.5, "Proximity Distance (ATR)", minval = 0.0, maxval = 3.0, step = 0.1, group = grp_htf)
+
+htf_match_mode      = input.string("Same Direction Only", "HTF Match Direction", options = ["Same Direction Only", "Any HTF FVG (Same or Opposite)"], group = grp_htf)
+
+
+
+check_3m  = input.bool(true, "3m",  inline = "tf_m", group = grp_htf)
+
+check_5m  = input.bool(true, "5m",  inline = "tf_m", group = grp_htf)
+
+check_15m = input.bool(true, "15m", inline = "tf_m", group = grp_htf)
+
+check_30m = input.bool(true, "30m", inline = "tf_m", group = grp_htf)
+
+
+
+check_1h  = input.bool(true, "1H",  inline = "tf_h", group = grp_htf)
+
+check_4h  = input.bool(true, "4H",  inline = "tf_h", group = grp_htf)
+
+check_1d  = input.bool(true, "1D",  inline = "tf_h", group = grp_htf)
+
+
+
+min_gap_atr_mult = input.float(0.5,  "Min Gap Size (ATR Multiplier)", minval = 0.1, maxval = 5.0, step = 0.1, group = grp_fvg)
+
+atr_length       = input.int(14,     "ATR Length", minval = 1, maxval = 50, group = grp_fvg)
+
+
+
+normalize_zones = input.bool(true,  "Normalize All Zone Heights", group = grp_zone)
+
+norm_atr_mult   = input.float(0.5,  "Zone Height (ATR Multiplier)", minval = 0.1, maxval = 5.0, step = 0.05, group = grp_zone)
+
+
+
+max_fvgs_per_side = input.int(7,     "Max Active FVGs Per Side", minval = 1, maxval = 30, group = grp_viz)
+
+extend_bars       = input.int(1,     "Extend Right (Candles/Bars)", minval = 0, maxval = 50, group = grp_viz)
+
+border_width      = input.int(1,     "Border Width", minval = 1, maxval = 4, group = grp_viz)
+
+
+
+show_bull   = input.bool(true, "Show Bullish FVGs", inline = "bull", group = grp_viz)
+
+bull_bg     = input.color(color.new(color.teal, 80), "", inline = "bull", group = grp_viz)
+
+bull_border = input.color(color.new(color.teal, 30), "Border", inline = "bull", group = grp_viz)
+
+
+
+show_bear   = input.bool(true, "Show Bearish FVGs", inline = "bear", group = grp_viz)
+
+bear_bg     = input.color(color.new(color.red, 80), "", inline = "bear", group = grp_viz)
+
+bear_border = input.color(color.new(color.red, 30), "Border", inline = "bear", group = grp_viz)
+
+
+
+show_labels  = input.bool(true, "Show FVG Labels", inline = "lbl", group = grp_lbl)
+
+lbl_txt_size = input.string("Small", "Label Text Size", options = ["Tiny","Small","Normal","Large","Huge"], inline = "lbl", group = grp_lbl)
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 4. SMT DIVERGENCE CONFIGURATION INPUTS
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+enableSMT    = input.bool(true, 'SMT On / Off', group = 'General Settings')
+
+limitSmts    = input.bool(true, 'Show Only Recent SMTs', inline = 'limit_smt', group = 'General Settings')
+
+maxSmtsCount = input.int(3, 'Count', minval = 1, maxval = 50, inline = 'limit_smt', group = 'General Settings')
+
+length       = input.int(3, 'Pivot Lookback', minval = 2, group = 'General Settings')
+
+
+
+pairMode = input.string('Auto (ICT Pairs)', 'Pair Selection Mode', options = ['Auto (ICT Pairs)', 'Manual'], group = 'Symbols')
+
+useSym1    = input.bool(true, 'Comparison Symbol A', inline = 'symA', group = 'Symbols')
+
+manualSym1 = input.symbol('CME_MINI_DL:ES1!', '', inline = 'symA', group = 'Symbols')
+
+useSym2    = input.bool(true, 'Comparison Symbol B', inline = 'symB', group = 'Symbols')
+
+manualSym2 = input.symbol('CBOT_MINI_DL:YM1!', '', inline = 'symB', group = 'Symbols')
+
+
+
+showHtfFilter = input.bool(true, 'Show Active HTF SMT Confluence in Label', group = 'HTF Confluence Filter')
+
+filterOnlyHtf = input.bool(false, 'Filter: Only Show SMT when HTF Active', group = 'HTF Confluence Filter')
+
+check3m_smt   = input.bool(true, '3m', inline = 'htf_tf', group = 'HTF Confluence Filter')
+
+check5m_smt   = input.bool(true, '5m', inline = 'htf_tf', group = 'HTF Confluence Filter')
+
+check15m_smt  = input.bool(true, '15m', inline = 'htf_tf', group = 'HTF Confluence Filter')
+
+check30m_smt  = input.bool(true, '30m', inline = 'htf_tf', group = 'HTF Confluence Filter')
+
+check60m_smt  = input.bool(true, '1H', inline = 'htf_tf', group = 'HTF Confluence Filter')
+
+htfMaxBars    = input.int(120, 'Max Active Lookback Bars', minval = 10, maxval = 500, group = 'HTF Confluence Filter')
+
+
+
+showMicro  = input.bool(true, 'Micro (Chart TF)', inline = 'tf_micro', group = 'Timeframes')
+
+microLabel = input.string('Micro SSMT', 'Label', inline = 'tf_micro', group = 'Timeframes')
+
+
+
+show90m    = input.bool(true, '90m SMT', inline = 'tf_90m', group = 'Timeframes')
+
+tf90m      = input.timeframe('90', '', inline = 'tf_90m', group = 'Timeframes')
+
+label90m   = input.string('90m SSMT', 'Label', inline = 'tf_90m', group = 'Timeframes')
+
+
+
+showDaily  = input.bool(true, 'Daily SMT', inline = 'tf_daily', group = 'Timeframes')
+
+tfDaily    = input.timeframe('D', '', inline = 'tf_daily', group = 'Timeframes')
+
+labelDaily = input.string('Daily SSMT', 'Label', inline = 'tf_daily', group = 'Timeframes')
+
+
+
+showWeekly  = input.bool(true, 'Weekly SMT', inline = 'tf_weekly', group = 'Timeframes')
+
+tfWeekly    = input.timeframe('W', '', inline = 'tf_weekly', group = 'Timeframes')
+
+labelWeekly = input.string('Weekly SSMT', 'Label', inline = 'tf_weekly', group = 'Timeframes')
+
+
+
+showPairName = input.bool(true, 'Show Comparison Pair Name in Label', group = 'Style')
+
+labelSizeOpt = input.string('Normal', 'Label Size', options = ['Auto', 'Tiny', 'Small', 'Normal', 'Large', 'Huge'], group = 'Style')
+
+showLines    = input.bool(true, 'Show SMT Lines', group = 'Style')
+
+lineStyleOpt = input.string('Solid', 'Line Style', options = ['Solid', 'Dashed', 'Dotted'], group = 'Style')
+
+lineWidth    = input.int(1, 'Line Width', minval = 1, maxval = 5, group = 'Style')
+
+
+
+bullDivCss   = input.color(#8b263e, 'Swing High Line Color', group = 'Style')
+
+bearDivCss   = input.color(#388e3c, 'Swing Low Line Color', group = 'Style')
+
+textColor    = input.color(color.black, 'Text Color', group = 'Style')
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 5. LIQUIDITY LEVELS INPUTS
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+gMain="0. General"
+
+gM="1. Timeframes"
+
+gS="2. Sessions"
+
+gR="3. Daily Levels"
+
+gV="4. Style"
+
+gA="5. Alerts"
+
+
+
+enableScript=input.bool(true,"Enable Liquidity Levels",group=gMain)
+
+nl=input.int(5,"Levels",1,20,inline="mtf",group=gM)
+
+delMtfBody=input.bool(false,"Delete on Body Close",group=gM)
+
+
+
+e1=input.bool(true,"TF 1 (1H)",inline="tf1",group=gM)
+
+e2=input.bool(true,"TF 2 (4H)",inline="tf2",group=gM)
+
+e3=input.bool(true,"TF 3 (1D)",inline="tf3",group=gM)
+
+
+
+sessMax15=input.bool(true,"Only on <= 15m",inline="slim",group=gS)
+
+delSessBody=input.bool(false,"Delete on Body Close",inline="slim",group=gS)
+
+
+
+aOn=input.bool(true,"Show Asia Killzone (06:00 - 10:00 PKT)",inline="as",group=gS)
+
+aCol=input.color(#55ff96,"",inline="as",group=gS)
+
+
+
+lOn=input.bool(true,"Show London Killzone (02:00 - 05:00 NY)",inline="lo",group=gS)
+
+lSess=input.session("1100-1400","",inline="lo",group=gS)
+
+lCol=input.color(#ff4040,"",inline="lo",group=gS)
+
+
+
+nOn=input.bool(true,"Show NY Killzone (17:00 - 20:00 PKT)",inline="ny",group=gS)
+
+nCol=input.color(#4d9dff,"",inline="ny",group=gS)
+
+
+
+lcOn=input.bool(true,"Show London Close Killzone (20:00 - 22:00 PKT)",inline="lc",group=gS)
+
+lcCol=input.color(#e040fb,"",inline="lc",group=gS)
+
+
+
+cbOn=input.bool(true,"Show US Late/After-Hours (23:30 - 06:00 PKT)",inline="cb",group=gS)
+
+cbCol=input.color(#ffaa00,"",inline="cb",group=gS)
+
+
+
+rst=input.bool(false,"Daily Reset",inline="day_rst",group=gR)
+
+pd=input.bool(true,"PDH / PDL",inline="day_pd",group=gR)
+
+pdhCol=input.color(#ff9800,"PDH",inline="day_pd",group=gR)
+
+pdlCol=input.color(#00e5ff,"PDL",inline="day_pd",group=gR)
+
+pdw=input.int(1,"Width",1,4,inline="day_pd",group=gR)
+
+
+
+lsz=input.string("Tiny","Labels",["Tiny","Small","Normal"],inline="view",group=gV)
+
+rtsz=input.string("Tiny","Live Tags",["Tiny","Small","Normal"],inline="view",group=gV)
+
+
+
+showCenterLbl=input.bool(true,"Center Labels",inline="lblpos",group=gV)
+
+showCornerMark=input.bool(false,"Corner Marks",inline="lblpos",group=gV)
+
+showRightTag=input.bool(false,"Right Tags",inline="lblpos",group=gV)
+
+
+
+hist=input.bool(true,"History",group=gV)
+
+hc=input.color(#ff4040,"High",inline="p",group=gV)
+
+lc=input.color(#55ff96,"Low",inline="p",group=gV)
+
+sc=input.color(#6d6d6d,"Sweep",inline="s",group=gV)
+
+sw=input.int(1,"",1,4,inline="s",group=gV)
+
+ss=input.string("Solid","",["Solid","Dashed","Dotted"],inline="s",group=gV)
+
+
+
+alNew=input.bool(false,"New",inline="al",group=gA)
+
+alMit=input.bool(true,"Mitigated",inline="al",group=gA)
+
+alHi=input.bool(true,"High",inline="side",group=gA)
+
+alLo=input.bool(true,"Low",inline="side",group=gA)
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 6. ALL-IN-ONE ULTRA FAST HTF ENGINE FUNCTION
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+f_htf_engine() =>
+
+    // 1. FVG
+
+    htf_atr = ta.atr(atr_length)
+
+    var float f_bt1 = na, var float f_bb1 = na
+
+    var float f_bt2 = na, var float f_bb2 = na
+
+    var float f_st1 = na, var float f_sb1 = na
+
+    var float f_st2 = na, var float f_sb2 = na
+
+
+
+    if deleteObOnBreakClose
+
+        if not na(f_bb1) and close < f_bb1
+
+            f_bt1 := na, f_bb1 := na
+
+        if not na(f_bb2) and close < f_bb2
+
+            f_bt2 := na, f_bb2 := na
+
+        if not na(f_st1) and close > f_st1
+
+            f_st1 := na, f_sb1 := na
+
+        if not na(f_st2) and close > f_st2
+
+            f_st2 := na, f_sb2 := na
+
+
+
+    bool is_b_fvg = low > high[2]
+
+    float gap_b   = low - high[2]
+
+    if is_b_fvg and gap_b >= nz(htf_atr[1], htf_atr) * min_gap_atr_mult
+
+        f_bt2 := f_bt1, f_bb2 := f_bb1
+
+        if normalize_zones and htf_atr > 0
+
+            float m = (low + high[2]) / 2.0
+
+            float h = (htf_atr * norm_atr_mult) / 2.0
+
+            f_bt1 := m + h, f_bb1 := m - h
+
+        else
+
+            f_bt1 := low, f_bb1 := high[2]
+
+
+
+    bool is_s_fvg = high < low[2]
+
+    float gap_s   = low[2] - high
+
+    if is_s_fvg and gap_s >= nz(htf_atr[1], htf_atr) * min_gap_atr_mult
+
+        f_st2 := f_st1, f_sb2 := f_sb1
+
+        if normalize_zones and htf_atr > 0
+
+            float m = (low[2] + high) / 2.0
+
+            float h = (htf_atr * norm_atr_mult) / 2.0
+
+            f_st1 := m + h, f_sb1 := m - h
+
+        else
+
+            f_st1 := low[2], f_sb1 := high
+
+
+
+    // 2. OB
+
+    var float s_high = high
+
+    var float s_low  = low
+
+    var int s_high_idx = 0
+
+    var int s_low_idx  = 0
+
+    var int s_dir      = 0
+
+    var int last_bull_wave = -1
+
+    var int last_bear_wave = -1
+
+
+
+    var float o_bt1 = na, var float o_bb1 = na
+
+    var float o_bt2 = na, var float o_bb2 = na
+
+    var float o_st1 = na, var float o_sb1 = na
+
+    var float o_st2 = na, var float o_sb2 = na
+
+
+
+    if barstate.isfirst
+
+        s_high := high
+
+        s_low  := low
+
+        s_high_idx := 0
+
+        s_low_idx  := 0
+
+
+
+    if deleteObOnBreakClose
+
+        if not na(o_bb1) and close < o_bb1
+
+            o_bt1 := na, o_bb1 := na
+
+        if not na(o_bb2) and close < o_bb2
+
+            o_bt2 := na, o_bb2 := na
+
+        if not na(o_st1) and close > o_st1
+
+            o_st1 := na, o_sb1 := na
+
+        if not na(o_st2) and close > o_st2
+
+            o_st2 := na, o_sb2 := na
+
+
+
+    int h_off = ta.highestbars(high, 10)
+
+    int l_off = ta.lowestbars(low, 10)
+
+    int s_max_bar = bar_index + h_off
+
+    int s_min_bar = bar_index + l_off
+
+
+
+    if bar_index >= 1
+
+        bool low_brk  = (close < s_low and close[1] >= s_low and bar_index[1] >= s_low_idx) or (s_dir == 2 and close < s_low) or (s_dir == 0 and close < s_low and bar_index > 5)
+
+        bool high_brk = (close > s_high and close[1] <= s_high and bar_index[1] >= s_high_idx) or (s_dir == 1 and close > s_high) or (s_dir == 0 and close > s_high and bar_index > 5)
+
+
+
+        if low_brk
+
+            if s_high_idx != last_bear_wave
+
+                int o_off = math.max(0, bar_index - s_high_idx)
+
+                float o_top = na
+
+                float o_bot = na
+
+                int start_k = math.max(2, o_off - 15)
+
+                int count_k = o_off - start_k
+
+                if count_k >= 0
+
+                    for i = 0 to count_k
+
+                        int k = o_off - i
+
+                        if k >= 2 and k < 500
+
+                            if (high[k - 2] < low[k]) or not obRequireFvg
+
+                                o_top := high[k]
+
+                                o_bot := low[k]
+
+                                break
+
+                if na(o_top) and not obRequireFvg and o_off < 500
+
+                    o_top := high[o_off]
+
+                    o_bot := low[o_off]
+
+
+
+                if not na(o_top) and not na(o_bot)
+
+                    o_st2 := o_st1, o_sb2 := o_sb1
+
+                    o_st1 := o_top, o_sb1 := o_bot
+
+
+
+                last_bear_wave := s_high_idx
+
+
+
+            s_dir      := 1
+
+            s_high_idx := s_max_bar
+
+            s_low_idx  := bar_index
+
+            s_high     := high[-h_off]
+
+            s_low      := low
+
+
+
+        else if high_brk
+
+            if s_low_idx != last_bull_wave
+
+                int o_off = math.max(0, bar_index - s_low_idx)
+
+                float o_top = na
+
+                float o_bot = na
+
+                int start_k = math.max(2, o_off - 15)
+
+                int count_k = o_off - start_k
+
+                if count_k >= 0
+
+                    for i = 0 to count_k
+
+                        int k = o_off - i
+
+                        if k >= 2 and k < 500
+
+                            if (low[k - 2] > high[k]) or not obRequireFvg
+
+                                o_top := high[k]
+
+                                o_bot := low[k]
+
+                                break
+
+                if na(o_top) and not obRequireFvg and o_off < 500
+
+                    o_top := high[o_off]
+
+                    o_bot := low[o_off]
+
+
+
+                if not na(o_top) and not na(o_bot)
+
+                    o_bt2 := o_bt1, o_bb2 := o_bb1
+
+                    o_bt1 := o_top, o_bb1 := o_bot
+
+
+
+                last_bull_wave := s_low_idx
+
+
+
+            s_dir      := 2
+
+            s_high_idx := bar_index
+
+            s_low_idx  := s_min_bar
+
+            s_high     := high
+
+            s_low      := low[-l_off]
+
+        else
+
+            if high > s_high and (s_dir == 0 or s_dir == 2)
+
+                s_high := high
+
+                s_high_idx := bar_index
+
+            else if low < s_low and (s_dir == 0 or s_dir == 1)
+
+                s_low := low
+
+                s_low_idx := bar_index
+
+
+
+    // 3. SMT Pivots
+
+    float p_high = fixnan(ta.pivothigh(length, length))
+
+    float p_low  = fixnan(ta.pivotlow(length, length))
+
+
+
+    // 4. Liquidity Pivots
+
+    float l_ph = ta.pivothigh(high, 1, 1)
+
+    float l_pl = ta.pivotlow(low, 1, 1)
+
+    int l_pht  = not na(l_ph) ? time[1] : na
+
+    int l_plt  = not na(l_pl) ? time[1] : na
+
+
+
+    [o_bt1, o_bb1, o_bt2, o_bb2, o_st1, o_sb1, o_st2, o_sb2, f_bt1, f_bb1, f_bt2, f_bb2, f_st1, f_sb1, f_st2, f_sb2, p_high, p_low, l_ph, l_pht, l_pl, l_plt]
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 7. CONSOLIDATED SECURITY REQUESTS (Only 7 calls for all HTF data on chart symbol!)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+[ob3_t1, ob3_b1, ob3_t2, ob3_b2, os3_t1, os3_b1, os3_t2, os3_b2, b3_t1, b3_b1, b3_t2, b3_b2, s3_t1, s3_b1, s3_t2, s3_b2, ph_3m, pl_3m, lph_3m, lpht_3m, lpl_3m, lplt_3m] = request.security(syminfo.tickerid, "3", f_htf_engine(), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
+[ob5_t1, ob5_b1, ob5_t2, ob5_b2, os5_t1, os5_b1, os5_t2, os5_b2, b5_t1, b5_b1, b5_t2, b5_b2, s5_t1, s5_b1, s5_t2, s5_b2, ph_5m, pl_5m, lph_5m, lpht_5m, lpl_5m, lplt_5m] = request.security(syminfo.tickerid, "5", f_htf_engine(), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
+[ob15_t1, ob15_b1, ob15_t2, ob15_b2, os15_t1, os15_b1, os15_t2, os15_b2, b15_t1, b15_b1, b15_t2, b15_b2, s15_t1, s15_b1, s15_t2, s15_b2, ph_15m, pl_15m, lph_15m, lpht_15m, lpl_15m, lplt_15m] = request.security(syminfo.tickerid, "15", f_htf_engine(), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
+[ob30_t1, ob30_b1, ob30_t2, ob30_b2, os30_t1, os30_b1, os30_t2, os30_b2, b30_t1, b30_b1, b30_t2, b30_b2, s30_t1, s30_b1, s30_t2, s30_b2, ph_30m, pl_30m, lph_30m, lpht_30m, lpl_30m, lplt_30m] = request.security(syminfo.tickerid, "30", f_htf_engine(), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
+[ob60_t1, ob60_b1, ob60_t2, ob60_b2, os60_t1, os60_b1, os60_t2, os60_b2, b60_t1, b60_b1, b60_t2, b60_b2, s60_t1, s60_b1, s60_t2, s60_b2, ph_60m, pl_60m, lph_60m, lpht_60m, lpl_60m, lplt_60m] = request.security(syminfo.tickerid, "60", f_htf_engine(), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
+[ob240_t1, ob240_b1, ob240_t2, ob240_b2, os240_t1, os240_b1, os240_t2, os240_b2, b240_t1, b240_b1, b240_t2, b240_b2, s240_t1, s240_b1, s240_t2, s240_b2, ph_240m, pl_240m, lph_240m, lpht_240m, lpl_240m, lplt_240m] = request.security(syminfo.tickerid, "240", f_htf_engine(), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
+[obD_t1, obD_b1, obD_t2, obD_b2, osD_t1, osD_b1, osD_t2, osD_b2, bD_t1, bD_b1, bD_t2, bD_b2, sD_t1, sD_b1, sD_t2, sD_b2, ph_D, pl_D, lph_D, lpht_D, lpl_D, lplt_D] = request.security(syminfo.tickerid, "D", f_htf_engine(), gaps = barmerge.gaps_off, lookahead = barmerge.lookahead_off)
+
+
+
+// Helpers to check if TF is higher than current chart
+
+curSec = timeframe.in_seconds()
+
+isHigher(string tf) => timeframe.in_seconds(tf) > curSec
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 8. ORDER BLOCK CORE PROCESSING
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type OrderBlock
+
+    line     topLine
+
+    line     bottomLine
+
+    linefill fillObj
+
+    label    lbl
+
+    float    topPrice
+
+    float    bottomPrice
+
+    int      startIdx
+
+    bool     isBullish
+
+    bool     isTested
+
+    bool     hasFvg
+
+
+
+var array<OrderBlock> obArray = array.new<OrderBlock>()
+
+
+
+ob_atr14 = ta.atr(14)
+
+f_safeX(int x) => math.max(x, math.max(0, bar_index - 950))
+
+
+
+get_ob_txt_size() =>
+
+    switch obLabelSize
+
+        "Tiny"   => size.tiny
+
+        "Small"  => size.small
+
+        "Normal" => size.normal
+
+        "Large"  => size.large
+
+        => size.small
+
+
+
+ob_check_htf_overlap(float obTop, float obBottom, float htfTop, float htfBottom, float tol) =>
+
+    not na(htfTop) and not na(htfBottom) and (obTop >= (htfBottom - tol) and obBottom <= (htfTop + tol))
+
+
+
+ob_check_single_tf_match(float obTop, float obBottom, bool isBull, float tol, float bt1, float bb1, float bt2, float bb2, float st1, float sb1, float st2, float sb2) =>
+
+    bool matched = false
+
+    if isBull
+
+        if ob_check_htf_overlap(obTop, obBottom, bt1, bb1, tol) or ob_check_htf_overlap(obTop, obBottom, bt2, bb2, tol)
+
+            matched := true
+
+        else if htfObMatchMode == "Any HTF OB (Same or Opposite)" and (ob_check_htf_overlap(obTop, obBottom, st1, sb1, tol) or ob_check_htf_overlap(obTop, obBottom, st2, sb2, tol))
+
+            matched := true
+
+    else
+
+        if ob_check_htf_overlap(obTop, obBottom, st1, sb1, tol) or ob_check_htf_overlap(obTop, obBottom, st2, sb2, tol)
+
+            matched := true
+
+        else if htfObMatchMode == "Any HTF OB (Same or Opposite)" and (ob_check_htf_overlap(obTop, obBottom, bt1, bb1, tol) or ob_check_htf_overlap(obTop, obBottom, bt2, bb2, tol))
+
+            matched := true
+
+    matched
+
+
+
+ob_get_matching_htf_tags(float obTop, float obBottom, bool isBull, float tol) =>
+
+    string result = ""
+
+    if ob_check_3m and isHigher("3") and ob_check_single_tf_match(obTop, obBottom, isBull, tol, ob3_t1, ob3_b1, ob3_t2, ob3_b2, os3_t1, os3_b1, os3_t2, os3_b2)
+
+        result += (result == "" ? "" : ", ") + "3m"
+
+    if ob_check_5m and isHigher("5") and ob_check_single_tf_match(obTop, obBottom, isBull, tol, ob5_t1, ob5_b1, ob5_t2, ob5_b2, os5_t1, os5_b1, os5_t2, os5_b2)
+
+        result += (result == "" ? "" : ", ") + "5m"
+
+    if ob_check_15m and isHigher("15") and ob_check_single_tf_match(obTop, obBottom, isBull, tol, ob15_t1, ob15_b1, ob15_t2, ob15_b2, os15_t1, os15_b1, os15_t2, os15_b2)
+
+        result += (result == "" ? "" : ", ") + "15m"
+
+    if ob_check_30m and isHigher("30") and ob_check_single_tf_match(obTop, obBottom, isBull, tol, ob30_t1, ob30_b1, ob30_t2, ob30_b2, os30_t1, os30_b1, os30_t2, os30_b2)
+
+        result += (result == "" ? "" : ", ") + "30m"
+
+    if ob_check_1h and isHigher("60") and ob_check_single_tf_match(obTop, obBottom, isBull, tol, ob60_t1, ob60_b1, ob60_t2, ob60_b2, os60_t1, os60_b1, os60_t2, os60_b2)
+
+        result += (result == "" ? "" : ", ") + "1H"
+
+    if ob_check_4h and isHigher("240") and ob_check_single_tf_match(obTop, obBottom, isBull, tol, ob240_t1, ob240_b1, ob240_t2, ob240_b2, os240_t1, os240_b1, os240_t2, os240_b2)
+
+        result += (result == "" ? "" : ", ") + "4H"
+
+    if ob_check_1d and isHigher("D") and ob_check_single_tf_match(obTop, obBottom, isBull, tol, obD_t1, obD_b1, obD_t2, obD_b2, osD_t1, osD_b1, osD_t2, osD_b2)
+
+        result += (result == "" ? "" : ", ") + "1D"
+
+    result
+
+
+
+build_ob_label(bool isBullish, bool isTested, float obTop, float obBottom) =>
+
+    string baseText = isBullish ? (isTested ? "Bull OB (Tested)" : "Bull OB") : (isTested ? "Bear OB (Tested)" : "Bear OB")
+
+    string htfText  = ""
+
+    if showHtfObConfluence
+
+        tol = ob_atr14 * htfObProximity
+
+        matchedTfs = ob_get_matching_htf_tags(obTop, obBottom, isBullish, tol)
+
+        if matchedTfs != ""
+
+            htfText := " [" + matchedTfs + " HTF OB]"
+
+    baseText + htfText
+
+
+
+f_findAndMarkExtremeOB(bool isBullish, int originIndex, int triggerIndex) =>
+
+    bool wasCreated = false
+
+    int lookbackBars = math.max(0, bar_index - originIndex)
+
+    float obTop = na
+
+    float obBottom = na
+
+    int foundObIdx = na
+
+    bool fvgFound = false
+
+
+
+    int startK = math.max(2, lookbackBars - 15)
+
+    int countK = lookbackBars - startK
+
+
+
+    if countK >= 0
+
+        for i = 0 to countK
+
+            int k = lookbackBars - i
+
+            if k >= 2 and k < 950
+
+                if isBullish
+
+                    if low[k - 2] > high[k]
+
+                        fvgFound := true
+
+                        obTop := high[k]
+
+                        obBottom := low[k]
+
+                        foundObIdx := bar_index - k
+
+                        break
+
+                else
+
+                    if high[k - 2] < low[k]
+
+                        fvgFound := true
+
+                        obTop := high[k]
+
+                        obBottom := low[k]
+
+                        foundObIdx := bar_index - k
+
+                        break
+
+
+
+    if na(obTop) and not obRequireFvg and lookbackBars < 950
+
+        obTop := high[lookbackBars]
+
+        obBottom := low[lookbackBars]
+
+        foundObIdx := originIndex
+
+
+
+    if not na(obTop) and not na(obBottom) and not na(foundObIdx)
+
+        while array.size(obArray) >= maxObHistory
+
+            OrderBlock oldestOb = array.shift(obArray)
+
+            line.delete(oldestOb.topLine)
+
+            line.delete(oldestOb.bottomLine)
+
+            if not na(oldestOb.fillObj)
+
+                linefill.delete(oldestOb.fillObj)
+
+            if not na(oldestOb.lbl)
+
+                label.delete(oldestOb.lbl)
+
+
+
+        color fillClr = isBullish ? bullObColorUntested : bearObColorUntested
+
+        color lineClr = isBullish ? bullObBorderUntested : bearObBorderUntested
+
+
+
+        int safeFoundX = f_safeX(foundObIdx)
+
+        int initialRightX = bar_index + 1
+
+        line tLine = line.new(x1 = safeFoundX, y1 = obTop, x2 = initialRightX, y2 = obTop, color = lineClr, width = obLineWidth)
+
+        line bLine = line.new(x1 = safeFoundX, y1 = obBottom, x2 = initialRightX, y2 = obBottom, color = lineClr, width = obLineWidth)
+
+        linefill fObj = linefill.new(tLine, bLine, fillClr)
+
+
+
+        int midX = math.round((safeFoundX + initialRightX) / 2)
+
+        float midY = (obTop + obBottom) / 2.0
+
+
+
+        label newLbl = na
+
+        if showObLabels
+
+            string dynamicText = build_ob_label(isBullish, false, obTop, obBottom)
+
+            newLbl := label.new(x = midX, y = midY, text = dynamicText, color = #00000000, textcolor = lineClr, style = label.style_label_center, size = get_ob_txt_size())
+
+
+
+        OrderBlock newOb = OrderBlock.new(tLine, bLine, fObj, newLbl, obTop, obBottom, foundObIdx, isBullish, false, fvgFound)
+
+        array.push(obArray, newOb)
+
+        wasCreated := true
+
+
+
+    wasCreated
+
+
+
+var float structureHigh = high
+
+var float structureLow  = low
+
+var int structureHighStartIndex = 0
+
+var int structureLowStartIndex  = 0
+
+var int structureDirection      = 0
+
+var int lastBullObWaveIndex = -1
+
+var int lastBearObWaveIndex = -1
+
+var bool isObCreatedAlert = false
+
+var bool isObTestedAlert  = false
+
+var bool isObBrokenAlert  = false
+
+
+
+int hOffset = ta.highestbars(high, 10)
+
+int lOffset = ta.lowestbars(low, 10)
+
+int structureMaxBarIndex = bar_index + hOffset
+
+int structureMinBarIndex = bar_index + lOffset
+
+
+
+if barstate.isfirst
+
+    structureHigh := high
+
+    structureLow  := low
+
+    structureHighStartIndex := 0
+
+    structureLowStartIndex  := 0
+
+
+
+isObCreatedAlert := false
+
+isObTestedAlert  := false
+
+isObBrokenAlert  := false
+
+
+
+if showOrderBlocks and bar_index >= 1
+
+    bool isLowBroken  = (close < structureLow and close[1] >= structureLow and bar_index[1] >= structureLowStartIndex) or (structureDirection == 2 and close < structureLow) or (structureDirection == 0 and close < structureLow and bar_index > 5)
+
+    bool isHighBroken = (close > structureHigh and close[1] <= structureHigh and bar_index[1] >= structureHighStartIndex) or (structureDirection == 1 and close > structureHigh) or (structureDirection == 0 and close > structureHigh and bar_index > 5)
+
+
+
+    if isLowBroken
+
+        if structureHighStartIndex != lastBearObWaveIndex
+
+            bool created = f_findAndMarkExtremeOB(false, structureHighStartIndex, bar_index)
+
+            lastBearObWaveIndex := structureHighStartIndex
+
+            if created
+
+                isObCreatedAlert := true
+
+        structureDirection      := 1
+
+        structureHighStartIndex := structureMaxBarIndex
+
+        structureLowStartIndex  := bar_index
+
+        structureHigh           := high[-hOffset]
+
+        structureLow            := low
+
+    else if isHighBroken
+
+        if structureLowStartIndex != lastBullObWaveIndex
+
+            bool created = f_findAndMarkExtremeOB(true, structureLowStartIndex, bar_index)
+
+            lastBullObWaveIndex := structureLowStartIndex
+
+            if created
+
+                isObCreatedAlert := true
+
+        structureDirection      := 2
+
+        structureHighStartIndex := bar_index 
+
+        structureLowStartIndex  := structureMinBarIndex
+
+        structureHigh           := high 
+
+        structureLow            := low[-lOffset]
+
+    else
+
+        if high > structureHigh and (structureDirection == 0 or structureDirection == 2)
+
+            structureHigh := high
+
+            structureHighStartIndex := bar_index
+
+        else if low < structureLow and (structureDirection == 0 or structureDirection == 1)
+
+            structureLow := low
+
+            structureLowStartIndex := bar_index
+
+
+
+if showOrderBlocks and array.size(obArray) > 0
+
+    int i = array.size(obArray) - 1
+
+    while i >= 0
+
+        ob = array.get(obArray, i)
+
+        bool isBrokenByClose = ob.isBullish ? (close < ob.bottomPrice) : (close > ob.topPrice)
+
+
+
+        if isBrokenByClose and deleteObOnBreakClose
+
+            line.delete(ob.topLine)
+
+            line.delete(ob.bottomLine)
+
+            if not na(ob.fillObj)
+
+                linefill.delete(ob.fillObj)
+
+            if not na(ob.lbl)
+
+                label.delete(ob.lbl)
+
+            array.remove(obArray, i)
+
+            isObBrokenAlert := true
+
+        else
+
+            if not ob.isTested
+
+                bool testHappened = ob.isBullish ? (low <= ob.topPrice and high >= ob.bottomPrice) : (high >= ob.bottomPrice and low <= ob.topPrice)
+
+                if testHappened
+
+                    ob.isTested := true
+
+                    int testExtendX = bar_index + 1
+
+                    line.set_x2(ob.topLine, testExtendX)
+
+                    line.set_x2(ob.bottomLine, testExtendX)
+
+                    line.set_color(ob.topLine, obTestedBorderColor)
+
+                    line.set_color(ob.bottomLine, obTestedBorderColor)
+
+                    linefill.set_color(ob.fillObj, obTestedBgColor)
+
+                    if not na(ob.lbl)
+
+                        int midX = math.round((f_safeX(ob.startIdx) + testExtendX) / 2)
+
+                        label.set_x(ob.lbl, midX)
+
+                        label.set_y(ob.lbl, (ob.topPrice + ob.bottomPrice) / 2)
+
+                        label.set_text(ob.lbl, build_ob_label(ob.isBullish, true, ob.topPrice, ob.bottomPrice))
+
+                        label.set_textcolor(ob.lbl, obTestedBorderColor)
+
+                    isObTestedAlert := true
+
+                else if barstate.islast and extendObToMarket
+
+                    int liveRightX = bar_index + 1
+
+                    line.set_x2(ob.topLine, liveRightX)
+
+                    line.set_x2(ob.bottomLine, liveRightX)
+
+                    if not na(ob.lbl)
+
+                        int midX = math.round((f_safeX(ob.startIdx) + liveRightX) / 2)
+
+                        label.set_x(ob.lbl, midX)
+
+                        label.set_y(ob.lbl, (ob.topPrice + ob.bottomPrice) / 2)
+
+                        if showHtfObConfluence
+
+                            label.set_text(ob.lbl, build_ob_label(ob.isBullish, false, ob.topPrice, ob.bottomPrice))
+
+        i -= 1
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 9. FVG CORE PROCESSING
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type FVG
+
+    line  top_line
+
+    line  bot_line
+
+    label lbl
+
+    float top
+
+    float bot
+
+    int   bar_idx
+
+    bool  is_bull
+
+
+
+var bull_fvgs = array.new<FVG>()
+
+var bear_fvgs = array.new<FVG>()
+
+
+
+atr14 = ta.atr(atr_length)
+
+
+
+get_txt_size() =>
+
+    switch lbl_txt_size
+
+        "Tiny"   => size.tiny
+
+        "Small"  => size.small
+
+        "Normal" => size.normal
+
+        "Large"  => size.large
+
+        "Huge"   => size.huge
+
+        => size.small
+
+
+
+normalize_zone(float raw_top, float raw_bot, float atr_now) =>
+
+    if normalize_zones and atr_now > 0
+
+        mid    = (raw_top + raw_bot) / 2.0
+
+        half_h = (atr_now * norm_atr_mult) / 2.0
+
+        [mid + half_h, mid - half_h]
+
+    else
+
+        [raw_top, raw_bot]
+
+
+
+check_htf_fvg_overlap(float fvgTop, float fvgBottom, float htfTop, float htfBottom, float tol) =>
+
+    not na(htfTop) and not na(htfBottom) and (fvgTop >= (htfBottom - tol) and fvgBottom <= (htfTop + tol))
+
+
+
+check_single_tf_fvg_match(float fvgTop, float fvgBottom, bool isBull, float tol, float bt1, float bb1, float bt2, float bb2, float st1, float sb1, float st2, float sb2) =>
+
+    bool matched = false
+
+    if isBull
+
+        if check_htf_fvg_overlap(fvgTop, fvgBottom, bt1, bb1, tol) or check_htf_fvg_overlap(fvgTop, fvgBottom, bt2, bb2, tol)
+
+            matched := true
+
+        else if htf_match_mode == "Any HTF FVG (Same or Opposite)" and (check_htf_fvg_overlap(fvgTop, fvgBottom, st1, sb1, tol) or check_htf_fvg_overlap(fvgTop, fvgBottom, st2, sb2, tol))
+
+            matched := true
+
+    else
+
+        if check_htf_fvg_overlap(fvgTop, fvgBottom, st1, sb1, tol) or check_htf_fvg_overlap(fvgTop, fvgBottom, st2, sb2, tol)
+
+            matched := true
+
+        else if htf_match_mode == "Any HTF FVG (Same or Opposite)" and (check_htf_fvg_overlap(fvgTop, fvgBottom, bt1, bb1, tol) or check_htf_fvg_overlap(fvgTop, fvgBottom, bt2, bb2, tol))
+
+            matched := true
+
+    matched
+
+
+
+get_matching_htf_fvg_tags(float fvgTop, float fvgBottom, bool isBull, float tol) =>
+
+    string result = ""
+
+    if check_3m and isHigher("3") and check_single_tf_fvg_match(fvgTop, fvgBottom, isBull, tol, b3_t1, b3_b1, b3_t2, b3_b2, s3_t1, s3_b1, s3_t2, s3_b2)
+
+        result += (result == "" ? "" : ", ") + "3m"
+
+    if check_5m and isHigher("5") and check_single_tf_fvg_match(fvgTop, fvgBottom, isBull, tol, b5_t1, b5_b1, b5_t2, b5_b2, s5_t1, s5_b1, s5_t2, s5_b2)
+
+        result += (result == "" ? "" : ", ") + "5m"
+
+    if check_15m and isHigher("15") and check_single_tf_fvg_match(fvgTop, fvgBottom, isBull, tol, b15_t1, b15_b1, b15_t2, b15_b2, s15_t1, s15_b1, s15_t2, s15_b2)
+
+        result += (result == "" ? "" : ", ") + "15m"
+
+    if check_30m and isHigher("30") and check_single_tf_fvg_match(fvgTop, fvgBottom, isBull, tol, b30_t1, b30_b1, b30_t2, b30_b2, s30_t1, s30_b1, s30_t2, s30_b2)
+
+        result += (result == "" ? "" : ", ") + "30m"
+
+    if check_1h and isHigher("60") and check_single_tf_fvg_match(fvgTop, fvgBottom, isBull, tol, b60_t1, b60_b1, b60_t2, b60_b2, s60_t1, s60_b1, s60_t2, s60_b2)
+
+        result += (result == "" ? "" : ", ") + "1H"
+
+    if check_4h and isHigher("240") and check_single_tf_fvg_match(fvgTop, fvgBottom, isBull, tol, b240_t1, b240_b1, b240_t2, b240_b2, s240_t1, s240_b1, s240_t2, s240_b2)
+
+        result += (result == "" ? "" : ", ") + "4H"
+
+    if check_1d and isHigher("D") and check_single_tf_fvg_match(fvgTop, fvgBottom, isBull, tol, bD_t1, bD_b1, bD_t2, bD_b2, sD_t1, sD_b1, sD_t2, sD_b2)
+
+        result += (result == "" ? "" : ", ") + "1D"
+
+    result
+
+
+
+build_fvg_label(bool is_bull, float zone_top, float zone_bot) =>
+
+    base_text = is_bull ? "FVG+" : "FVG-"
+
+    htf_text  = ""
+
+    if show_htf_confluence
+
+        tol = atr14 * htf_tol_mult
+
+        matchedTfs = get_matching_htf_fvg_tags(zone_top, zone_bot, is_bull, tol)
+
+        if matchedTfs != ""
+
+            htf_text := " [" + matchedTfs + " HTF FVG]"
+
+    base_text + htf_text
+
+
+
+var bool new_bull_fvg = false
+
+var bool new_bear_fvg = false
+
+
+
+if enable_fvg and barstate.isconfirmed
+
+    new_bull_fvg := false
+
+    new_bear_fvg := false
+
+
+
+    bool is_bull_fvg   = low > high[2]
+
+    float gap_size_bull = low - high[2]
+
+    if show_bull and is_bull_fvg and gap_size_bull >= nz(atr14[1], atr14) * min_gap_atr_mult
+
+        new_bull_fvg := true
+
+        [norm_top, norm_bot] = normalize_zone(low, high[2], atr14)
+
+        int fvg_bar   = bar_index - 1
+
+        float fvg_mid = (norm_top + norm_bot) / 2.0
+
+        int right_bar = bar_index + extend_bars
+
+        
+
+        line l_top = line.new(fvg_bar, norm_top, right_bar, norm_top, color = bull_border, width = border_width)
+
+        line l_bot = line.new(fvg_bar, norm_bot, right_bar, norm_bot, color = bull_border, width = border_width)
+
+        linefill.new(l_top, l_bot, bull_bg)
+
+        
+
+        label lbl = na
+
+        if show_labels
+
+            lbl_txt = build_fvg_label(true, norm_top, norm_bot)
+
+            lbl := label.new(math.round((fvg_bar + right_bar) / 2), fvg_mid, lbl_txt, color = color.new(color.white, 100), textcolor = bull_border, style = label.style_label_center, size = get_txt_size())
+
+            
+
+        bull_fvgs.push(FVG.new(l_top, l_bot, lbl, norm_top, norm_bot, fvg_bar, true))
+
+
+
+    bool is_bear_fvg   = high < low[2]
+
+    float gap_size_bear = low[2] - high
+
+    if show_bear and is_bear_fvg and gap_size_bear >= nz(atr14[1], atr14) * min_gap_atr_mult
+
+        new_bear_fvg := true
+
+        [norm_top, norm_bot] = normalize_zone(low[2], high, atr14)
+
+        int fvg_bar   = bar_index - 1
+
+        float fvg_mid = (norm_top + norm_bot) / 2.0
+
+        int right_bar = bar_index + extend_bars
+
+        
+
+        line l_top = line.new(fvg_bar, norm_top, right_bar, norm_top, color = bear_border, width = border_width)
+
+        line l_bot = line.new(fvg_bar, norm_bot, right_bar, norm_bot, color = bear_border, width = border_width)
+
+        linefill.new(l_top, l_bot, bear_bg)
+
+        
+
+        label lbl = na
+
+        if show_labels
+
+            lbl_txt = build_fvg_label(false, norm_top, norm_bot)
+
+            lbl := label.new(math.round((fvg_bar + right_bar) / 2), fvg_mid, lbl_txt, color = color.new(color.white, 100), textcolor = bear_border, style = label.style_label_center, size = get_txt_size())
+
+            
+
+        bear_fvgs.push(FVG.new(l_top, l_bot, lbl, norm_top, norm_bot, fvg_bar, false))
+
+
+
+update_active_fvgs(array<FVG> active_arr) =>
+
+    if active_arr.size() > 0
+
+        int i = active_arr.size() - 1
+
+        while i >= 0
+
+            fvg = active_arr.get(i)
+
+            mitigated = fvg.is_bull ? close < fvg.bot : close > fvg.top
+
+            if mitigated
+
+                line.delete(fvg.top_line)
+
+                line.delete(fvg.bot_line)
+
+                if not na(fvg.lbl)
+
+                    label.delete(fvg.lbl)
+
+                active_arr.remove(i)
+
+            else if barstate.islast
+
+                right_bar = bar_index + extend_bars
+
+                line.set_x2(fvg.top_line, right_bar)
+
+                line.set_x2(fvg.bot_line, right_bar)
+
+                mid = (fvg.top + fvg.bot) / 2.0
+
+                if not na(fvg.lbl)
+
+                    label.set_xy(fvg.lbl, math.round((fvg.bar_idx + right_bar) / 2), mid)
+
+                    if show_htf_confluence
+
+                        label.set_text(fvg.lbl, build_fvg_label(fvg.is_bull, fvg.top, fvg.bot))
+
+            i -= 1
+
+
+
+if enable_fvg
+
+    update_active_fvgs(bull_fvgs)
+
+    update_active_fvgs(bear_fvgs)
+
+
+
+limit_array(array<FVG> arr, int max_size) =>
+
+    while arr.size() > max_size
+
+        old_fvg = arr.shift()
+
+        line.delete(old_fvg.top_line)
+
+        line.delete(old_fvg.bot_line)
+
+        if not na(old_fvg.lbl)
+
+            label.delete(old_fvg.lbl)
+
+
+
+if enable_fvg
+
+    limit_array(bull_fvgs, max_fvgs_per_side)
+
+    limit_array(bear_fvgs, max_fvgs_per_side)
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 10. SMT DIVERGENCE CORE PROCESSING
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+get_auto_pairs() =>
+
+    string s1 = "CME_MINI_DL:ES1!"
+
+    string s2 = "CBOT_MINI_DL:YM1!"
+
+    t = syminfo.ticker
+
+    if str.contains(t, "NQ") or str.contains(t, "MNQ") or str.contains(t, "USTEC") or str.contains(t, "NAS100")
+
+        s1 := "CME_MINI_DL:ES1!"
+
+        s2 := "CBOT_MINI_DL:YM1!"
+
+    else if str.contains(t, "ES") or str.contains(t, "MES") or str.contains(t, "SPX") or str.contains(t, "US500")
+
+        s1 := "CME_MINI_DL:NQ1!"
+
+        s2 := "CBOT_MINI_DL:YM1!"
+
+    else if str.contains(t, "YM") or str.contains(t, "MYM") or str.contains(t, "DJI") or str.contains(t, "US30")
+
+        s1 := "CME_MINI_DL:ES1!"
+
+        s2 := "CME_MINI_DL:NQ1!"
+
+    else if str.contains(t, "EUR")
+
+        s1 := "FX:GBPUSD"
+
+        s2 := "TVC:DXY"
+
+    else if str.contains(t, "GBP")
+
+        s1 := "FX:EURUSD"
+
+        s2 := "TVC:DXY"
+
+    else if str.contains(t, "DXY")
+
+        s1 := "FX:EURUSD"
+
+        s2 := "FX:GBPUSD"
+
+    else if str.contains(t, "XAU") or str.contains(t, "GOLD")
+
+        s1 := "TVC:SILVER"
+
+        s2 := "TVC:DXY"
+
+    else if str.contains(t, "XAG") or str.contains(t, "SILVER")
+
+        s1 := "OANDA:XAUUSD"
+
+        s2 := "TVC:DXY"
+
+    else if str.contains(t, "BTC")
+
+        s1 := "BITSTAMP:ETHUSD"
+
+        s2 := "BITSTAMP:ETHUSD"
+
+    else if str.contains(t, "ETH")
+
+        s1 := "BITSTAMP:BTCUSD"
+
+        s2 := "BITSTAMP:BTCUSD"
+
+    [s1, s2]
+
+
+
+[autoSym1, autoSym2] = get_auto_pairs()
+
+sym1 = pairMode == 'Auto (ICT Pairs)' ? autoSym1 : manualSym1
+
+sym2 = pairMode == 'Auto (ICT Pairs)' ? autoSym2 : manualSym2
+
+
+
+activeUseSym1 = pairMode == 'Auto (ICT Pairs)' ? true : useSym1
+
+activeUseSym2 = pairMode == 'Auto (ICT Pairs)' ? (not str.contains(syminfo.ticker, "BTC") and not str.contains(syminfo.ticker, "ETH")) : useSym2
+
+
+
+ticker1_name = activeUseSym1 ? syminfo.ticker(sym1) : ""
+
+ticker2_name = activeUseSym2 ? syminfo.ticker(sym2) : ""
+
+
+
+get_label_size(sz) =>
+
+    switch sz
+
+        'Auto'   => size.auto
+
+        'Tiny'   => size.tiny
+
+        'Small'  => size.small
+
+        'Normal' => size.normal
+
+        'Large'  => size.large
+
+        'Huge'   => size.huge
+
+        => size.normal
+
+
+
+lblSize = get_label_size(labelSizeOpt)
+
+
+
+get_line_style(st) =>
+
+    switch st
+
+        'Solid'  => line.style_solid
+
+        'Dashed' => line.style_dashed
+
+        'Dotted' => line.style_dotted
+
+        => line.style_solid
+
+
+
+smtLineStyle = get_line_style(lineStyleOpt)
+
+
+
+type SmtItem
+
+    label lbl
+
+    line line1
+
+    line line2
+
+
+
+var array<SmtItem> smt_history = array.new<SmtItem>()
+
+
+
+get_pivots(len) => [fixnan(ta.pivothigh(len, len)), fixnan(ta.pivotlow(len, len))]
+
+
+
+get_divergence(ph, y2, sym_y2, css, drawLine)=>
+
+    var float y1 = na
+
+    var float sym_y1 = na
+
+    var int x1 = na
+
+    var smt = 0
+
+    line created_line = na
+
+
+
+    if y2 != y2[1] and sym_y2 != sym_y2[1] 
+
+        if (y2 - y1) * (sym_y2 - sym_y1) < 0
+
+            if drawLine and showLines
+
+                created_line := line.new(bar_index[length], y2, x1, y1, color = css, width = lineWidth, style = smtLineStyle)
+
+            smt += 1
+
+        sym_y1 := sym_y2
+
+        y1 := y2
+
+        x1 := bar_index[length]
+
+    else if (ph and y2 > y2[1]) or (not ph and y2 < y2[1]) 
+
+        sym_y1 := na
+
+        y1 := y2
+
+        x1 := bar_index[length]
+
+    
+
+    [smt, created_line]
+
+
+
+calc_htf_smt(ph, pl, sym1_ph, sym1_pl, useSym1_flag) =>
+
+    var ph_smt1 = 0., var pl_smt1 = 0.
+
+    if useSym1_flag
+
+        [s1, _] = get_divergence(true, ph, sym1_ph, color.white, false)
+
+        ph_smt1 := s1
+
+        [s2, _] = get_divergence(false, pl, sym1_pl, color.white, false)
+
+        pl_smt1 := s2
+
+
+
+    var bool is_high_active = false
+
+    var float high_level = na
+
+    var int high_bar = na
+
+    var bool is_low_active = false
+
+    var float low_level = na
+
+    var int low_bar = na
+
+
+
+    if ph != ph[1]
+
+        bool div1 = useSym1_flag and ph_smt1 > ph_smt1[1]
+
+        is_high_active := div1
+
+        high_level     := div1 ? ph : high_level
+
+        high_bar       := div1 ? bar_index : high_bar
+
+
+
+    if pl != pl[1]
+
+        bool div1 = useSym1_flag and pl_smt1 > pl_smt1[1]
+
+        is_low_active := div1
+
+        low_level     := div1 ? pl : low_level
+
+        low_bar       := div1 ? bar_index : low_bar
+
+
+
+    if is_high_active and (close > high_level or (bar_index - high_bar > htfMaxBars))
+
+        is_high_active := false
+
+    if is_low_active and (close < low_level or (bar_index - low_bar > htfMaxBars))
+
+        is_low_active := false
+
+
+
+    [is_high_active, is_low_active]
+
+
+
+process_smt(showTF, ph, pl, sym1_ph, sym1_pl, sym2_ph, sym2_pl, useSym1_flag, useSym2_flag, t1_name, t2_name, labelTxt, bullCss, bearCss, txtCss, showPairName, selectedSize, isMicroTF, htf_high_str, htf_low_str) =>
+
+    var ph_smt1 = 0., var pl_smt1 = 0.
+
+    var ph_smt2 = 0., var pl_smt2 = 0.
+
+    line h_line1 = na, line h_line2 = na
+
+    line l_line1 = na, line l_line2 = na
+
+
+
+    if enableSMT and showTF
+
+        if useSym1_flag
+
+            [s1, line_h1] = get_divergence(true, ph, sym1_ph, bullCss, true)
+
+            ph_smt1 := s1
+
+            h_line1 := line_h1
+
+
+
+            [s2, line_l1] = get_divergence(false, pl, sym1_pl, bearCss, true)
+
+            pl_smt1 := s2
+
+            l_line1 := line_l1
+
+
+
+        if useSym2_flag
+
+            [s3, line_h2] = get_divergence(true, ph, sym2_ph, bullCss, true)
+
+            ph_smt2 := s3
+
+            h_line2 := line_h2
+
+
+
+            [s4, line_l2] = get_divergence(false, pl, sym2_pl, bearCss, true)
+
+            pl_smt2 := s4
+
+            l_line2 := line_l2
+
+
+
+        if ph != ph[1]
+
+            bool div1 = useSym1_flag and ph_smt1 > ph_smt1[1]
+
+            bool div2 = useSym2_flag and ph_smt2 > ph_smt2[1]
+
+
+
+            if div1 or div2
+
+                bool allowHigh = not (isMicroTF and filterOnlyHtf) or (htf_high_str != "")
+
+                if allowHigh
+
+                    string pairsStr = ""
+
+                    if showPairName
+
+                        if div1
+
+                            pairsStr += t1_name
+
+                        if div2
+
+                            pairsStr += (pairsStr != "" ? " | " : "") + t2_name
+
+
+
+                    string htfTag = (isMicroTF and showHtfFilter and htf_high_str != "") ? " [" + htf_high_str + "]" : ""
+
+                    string finalTxt = labelTxt + (pairsStr != "" ? " (" + pairsStr + ")" : "") + htfTag + " 🔴"
+
+
+
+                    lbl = label.new(bar_index[length], ph, finalTxt, color = color.new(color.white, 100), style = label.style_label_down, textcolor = txtCss, size = selectedSize)
+
+
+
+                    if limitSmts
+
+                        array.push(smt_history, SmtItem.new(lbl, h_line1, h_line2))
+
+                        while array.size(smt_history) > maxSmtsCount
+
+                            SmtItem old = array.shift(smt_history)
+
+                            if not na(old.lbl)
+
+                                label.delete(old.lbl)
+
+                            if not na(old.line1)
+
+                                line.delete(old.line1)
+
+                            if not na(old.line2)
+
+                                line.delete(old.line2)
+
+                else
+
+                    if not na(h_line1)
+
+                        line.delete(h_line1)
+
+                    if not na(h_line2)
+
+                        line.delete(h_line2)
+
+
+
+        else if pl != pl[1]
+
+            bool div1 = useSym1_flag and pl_smt1 > pl_smt1[1]
+
+            bool div2 = useSym2_flag and pl_smt2 > pl_smt2[1]
+
+
+
+            if div1 or div2
+
+                bool allowLow = not (isMicroTF and filterOnlyHtf) or (htf_low_str != "")
+
+                if allowLow
+
+                    string pairsStr = ""
+
+                    if showPairName
+
+                        if div1
+
+                            pairsStr += t1_name
+
+                        if div2
+
+                            pairsStr += (pairsStr != "" ? " | " : "") + t2_name
+
+
+
+                    string htfTag = (isMicroTF and showHtfFilter and htf_low_str != "") ? " [" + htf_low_str + "]" : ""
+
+                    string finalTxt = labelTxt + (pairsStr != "" ? " (" + pairsStr + ")" : "") + htfTag + " 🟢"
+
+
+
+                    lbl = label.new(bar_index[length], pl, finalTxt, color = color.new(color.white, 100), style = label.style_label_up, textcolor = txtCss, size = selectedSize)
+
+
+
+                    if limitSmts
+
+                        array.push(smt_history, SmtItem.new(lbl, l_line1, l_line2))
+
+                        while array.size(smt_history) > maxSmtsCount
+
+                            SmtItem old = array.shift(smt_history)
+
+                            if not na(old.lbl)
+
+                                label.delete(old.lbl)
+
+                            if not na(old.line1)
+
+                                line.delete(old.line1)
+
+                            if not na(old.line2)
+
+                                line.delete(old.line2)
+
+                else
+
+                    if not na(l_line1)
+
+                        line.delete(l_line1)
+
+                    if not na(l_line2)
+
+                        line.delete(l_line2)
+
+
+
+// SMT Comparison Pair Security Calls
+
+ph_micro = fixnan(ta.pivothigh(length, length))
+
+pl_micro = fixnan(ta.pivotlow(length, length))
+
+
+
+[sym1_ph_micro, sym1_pl_micro] = request.security(sym1, timeframe.period, get_pivots(length))
+
+[sym2_ph_micro, sym2_pl_micro] = request.security(sym2, timeframe.period, get_pivots(length))
+
+
+
+[sym1_ph_3m, sym1_pl_3m]   = request.security(sym1, "3", get_pivots(length))
+
+[sym1_ph_5m, sym1_pl_5m]   = request.security(sym1, "5", get_pivots(length))
+
+[sym1_ph_15m, sym1_pl_15m] = request.security(sym1, "15", get_pivots(length))
+
+[sym1_ph_30m, sym1_pl_30m] = request.security(sym1, "30", get_pivots(length))
+
+[sym1_ph_60m, sym1_pl_60m] = request.security(sym1, "60", get_pivots(length))
+
+
+
+[ph_90m, pl_90m]           = request.security(syminfo.tickerid, tf90m, get_pivots(length))
+
+[sym1_ph_90m, sym1_pl_90m] = request.security(sym1, tf90m, get_pivots(length))
+
+[sym2_ph_90m, sym2_pl_90m] = request.security(sym2, tf90m, get_pivots(length))
+
+
+
+[sym1_ph_D, sym1_pl_D] = request.security(sym1, tfDaily, get_pivots(length))
+
+[sym2_ph_D, sym2_pl_D] = request.security(sym2, tfDaily, get_pivots(length))
+
+
+
+[ph_W, pl_W]           = request.security(syminfo.tickerid, tfWeekly, get_pivots(length))
+
+[sym1_ph_W, sym1_pl_W] = request.security(sym1, tfWeekly, get_pivots(length))
+
+[sym2_ph_W, sym2_pl_W] = request.security(sym2, tfWeekly, get_pivots(length))
+
+
+
+[htf_3m_high,  htf_3m_low]  = calc_htf_smt(ph_3m,  pl_3m,  sym1_ph_3m,  sym1_pl_3m,  activeUseSym1)
+
+[htf_5m_high,  htf_5m_low]  = calc_htf_smt(ph_5m,  pl_5m,  sym1_ph_5m,  sym1_pl_5m,  activeUseSym1)
+
+[htf_15m_high, htf_15m_low] = calc_htf_smt(ph_15m, pl_15m, sym1_ph_15m, sym1_pl_15m, activeUseSym1)
+
+[htf_30m_high, htf_30m_low] = calc_htf_smt(ph_30m, pl_30m, sym1_ph_30m, sym1_pl_30m, activeUseSym1)
+
+[htf_60m_high, htf_60m_low] = calc_htf_smt(ph_60m, pl_60m, sym1_ph_60m, sym1_pl_60m, activeUseSym1)
+
+
+
+bool tf3m_valid  = timeframe.in_seconds("3")  >= curSec
+
+bool tf5m_valid  = timeframe.in_seconds("5")  >= curSec
+
+bool tf15m_valid = timeframe.in_seconds("15") >= curSec
+
+bool tf30m_valid = timeframe.in_seconds("30") >= curSec
+
+bool tf60m_valid = timeframe.in_seconds("60") >= curSec
+
+
+
+string htf_high_str = ""
+
+string htf_low_str  = ""
+
+
+
+if showHtfFilter or filterOnlyHtf
+
+    if tf3m_valid and check3m_smt and htf_3m_high
+
+        htf_high_str += (htf_high_str != "" ? " " : "") + "3m"
+
+    if tf5m_valid and check5m_smt and htf_5m_high
+
+        htf_high_str += (htf_high_str != "" ? " " : "") + "5m"
+
+    if tf15m_valid and check15m_smt and htf_15m_high
+
+        htf_high_str += (htf_high_str != "" ? " " : "") + "15m"
+
+    if tf30m_valid and check30m_smt and htf_30m_high
+
+        htf_high_str += (htf_high_str != "" ? " " : "") + "30m"
+
+    if tf60m_valid and check60m_smt and htf_60m_high
+
+        htf_high_str += (htf_high_str != "" ? " " : "") + "1H"
+
+
+
+    if tf3m_valid and check3m_smt and htf_3m_low
+
+        htf_low_str += (htf_low_str != "" ? " " : "") + "3m"
+
+    if tf5m_valid and check5m_smt and htf_5m_low
+
+        htf_low_str += (htf_low_str != "" ? " " : "") + "5m"
+
+    if tf15m_valid and check15m_smt and htf_15m_low
+
+        htf_low_str += (htf_low_str != "" ? " " : "") + "15m"
+
+    if tf30m_valid and check30m_smt and htf_30m_low
+
+        htf_low_str += (htf_low_str != "" ? " " : "") + "30m"
+
+    if tf60m_valid and check60m_smt and htf_60m_low
+
+        htf_low_str += (htf_low_str != "" ? " " : "") + "1H"
+
+
+
+process_smt(showMicro,  ph_micro, pl_micro, sym1_ph_micro, sym1_pl_micro, sym2_ph_micro, sym2_pl_micro, activeUseSym1, activeUseSym2, ticker1_name, ticker2_name, microLabel,  bullDivCss, bearDivCss, textColor, showPairName, lblSize, true, htf_high_str, htf_low_str)
+
+process_smt(show90m,    ph_90m,   pl_90m,   sym1_ph_90m,   sym1_pl_90m,   sym2_ph_90m,   sym2_pl_90m,   activeUseSym1, activeUseSym2, ticker1_name, ticker2_name, label90m,    bullDivCss, bearDivCss, textColor, showPairName, lblSize, false, "", "")
+
+process_smt(showDaily,  ph_D,     pl_D,     sym1_ph_D,     sym1_pl_D,     sym2_ph_D,     sym2_pl_D,     activeUseSym1, activeUseSym2, ticker1_name, ticker2_name, labelDaily,  bullDivCss, bearDivCss, textColor, showPairName, lblSize, false, "", "")
+
+process_smt(showWeekly, ph_W,     pl_W,     sym1_ph_W,     sym1_pl_W,     sym2_ph_W,     sym2_pl_W,     activeUseSym1, activeUseSym2, ticker1_name, ticker2_name, labelWeekly, bullDivCss, bearDivCss, textColor, showPairName, lblSize, false, "", "")    
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 11. LIQUIDITY LEVELS (ZERO-LOOP HIGH EFFICIENCY ENGINE)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const int MAX_SWEEPS = 80
+
+const string sessTz  = "Asia/Karachi"
+
+const string aSess   = "0600-1000"
+
+const string nSess   = "1700-2000"
+
+const string lcSess  = "2000-2200"
+
+const string cbSess  = "2330-0600"
+
+
+
+type Level
+
+    float p
+
+    bool hi
+
+    int x
+
+    int born
+
+    string tags
+
+    bool swept
+
+    int sx
+
+    label mark
+
+    label rt
+
+    line ln
+
+    label txt
+
+
+
+type Sess
+
+    float h
+
+    float l
+
+    int hx
+
+    int lx
+
+
+
+var array<Level> live = array.new<Level>()
+
+var array<Level> done = array.new<Level>()
+
+var array<string> aQ  = array.new_string()
+
+var array<bool> aSig  = array.from(false,false,false,false)
+
+var int day0          = na
+
+
+
+var array<Sess> ses = array.from(
+
+ Sess.new(na,na,na,na),
+
+ Sess.new(na,na,na,na),
+
+ Sess.new(na,na,na,na),
+
+ Sess.new(na,na,na,na),
+
+ Sess.new(na,na,na,na))
+
+
+
+var array<string> sNames = array.from("Asia","London","NY","London Close","US Late")
+
+var array<color> sCols   = array.from(aCol,lCol,nCol,lcCol,cbCol)
+
+
+
+lblSize_liq() => lsz=="Small"?size.small:lsz=="Normal"?size.normal:size.tiny
+
+rtSize_liq()  => rtsz=="Small"?size.small:rtsz=="Normal"?size.normal:size.tiny
+
+lnStyle_liq() => ss=="Dashed"?line.style_dashed:ss=="Dotted"?line.style_dotted:line.style_solid
+
+
+
+dayKey(int t) => year(t,sessTz)*10000+month(t,sessTz)*100+dayofmonth(t,sessTz)
+
+hasTag(string tags,string tag) => str.contains("|"+tags+"|","|"+tag+"|")
+
+addTag(string tags,string tag) => hasTag(tags,tag)?tags:str.length(tags)==0?tag:tags+"|"+tag
+
+delTag(string tags,string tag) =>
+
+    s=str.replace_all("|"+tags+"|","|"+tag+"|","|")
+
+    str.length(s)<=2?"":str.substring(s,1,str.length(s)-1)
+
+tagText(string tags) => str.replace_all(tags,"|","+")
+
+
+
+isSessLvl(Level x) =>
+
+    hit=false
+
+    if sNames.size()>0
+
+        for i=0 to sNames.size()-1
+
+            if hasTag(x.tags,sNames.get(i))
+
+                hit:=true
+
+                break
+
+    hit
+
+
+
+shouldDeleteOnBody(Level x) => isSessLvl(x)?delSessBody:delMtfBody
+
+
+
+lvlColor(Level x) =>
+
+    c=x.swept?sc:x.hi?hc:lc
+
+    if not x.swept
+
+        if hasTag(x.tags,"PDH")
+
+            c:=pdhCol
+
+        else if hasTag(x.tags,"PDL")
+
+            c:=pdlCol
+
+    for i=0 to sNames.size()-1
+
+        if hasTag(x.tags,sNames.get(i))
+
+            c:=sCols.get(i)
+
+    c
+
+
+
+markText(Level x) =>
+
+    s=tagText(x.tags)
+
+    x.hi?s+"\n⊙\n ":" \n⊙\n"+s
+
+
+
+method destroy(Level x) =>
+
+    if not na(x.mark)
+
+        label.delete(x.mark)
+
+    if not na(x.rt)
+
+        label.delete(x.rt)
+
+    if not na(x.ln)
+
+        line.delete(x.ln)
+
+    if not na(x.txt)
+
+        label.delete(x.txt)
+
+    0
+
+
+
+removeLive(int id) =>
+
+    x=live.get(id)
+
+    x.destroy()
+
+    live.remove(id)
+
+    0
+
+
+
+removeDone(int id) =>
+
+    x=done.get(id)
+
+    x.destroy()
+
+    done.remove(id)
+
+    0
+
+
+
+removeTagAt(int id,string tag) =>
+
+    x=live.get(id)
+
+    x.tags:=delTag(x.tags,tag)
+
+    if str.length(x.tags)==0
+
+        removeLive(id)
+
+    else
+
+        live.set(id,x)
+
+    0
+
+
+
+clearTag(string tag) =>
+
+    i=live.size()-1
+
+    while i>=0
+
+        x=live.get(i)
+
+        if hasTag(x.tags,tag)
+
+            removeTagAt(i,tag)
+
+        i-=1
+
+    0
+
+
+
+clearLevels() =>
+
+    while live.size() > 0
+
+        removeLive(0)
+
+    while done.size() > 0
+
+        removeDone(0)
+
+    0
+
+
+
+hideSweeps(int keep) =>
+
+    if done.size()>0
+
+        for i=0 to done.size()-1
+
+            if i!=keep
+
+                x=done.get(i)
+
+                if not na(x.ln)
+
+                    line.delete(x.ln)
+
+                    x.ln:=na
+
+                if not na(x.txt)
+
+                    label.delete(x.txt)
+
+                    x.txt:=na
+
+                done.set(i,x)
+
+    0
+
+
+
+prune() =>
+
+    while done.size()>MAX_SWEEPS
+
+        removeDone(0)
+
+    0
+
+
+
+addLevel(float raw,bool hi,int ox,string tag,bool mergeSwept) =>
+
+    if not na(raw) and not na(ox) and str.length(tag)>0
+
+        p=math.round_to_mintick(raw)
+
+        id=-1
+
+        i=0
+
+        while i<live.size() and id==-1
+
+            x=live.get(i)
+
+            if x.hi==hi and x.p==p
+
+                id:=i
+
+            i+=1
+
+
+
+        if id>=0
+
+            x=live.get(id)
+
+            x.tags:=addTag(x.tags,tag)
+
+            x.x:=math.min(x.x,ox)
+
+            live.set(id,x)
+
+        else
+
+            did=-1
+
+            if mergeSwept and done.size()>0
+
+                j=done.size()-1
+
+                while j>=0 and did==-1
+
+                    x=done.get(j)
+
+                    same=na(day0) or x.sx>=day0
+
+                    if same and x.hi==hi and x.p==p
+
+                        did:=j
+
+                    j-=1
+
+
+
+            if did>=0
+
+                x=done.get(did)
+
+                x.tags:=addTag(x.tags,tag)
+
+                x.x:=math.min(x.x,ox)
+
+                done.set(did,x)
+
+            else
+
+                x=Level.new(p,hi,ox,bar_index,tag,false,na,na,na,na,na)
+
+                c=lvlColor(x)
+
+                lblSt=hi?label.style_none:label.style_label_up
+
+                isPd=tag=="PDH" or tag=="PDL"
+
+                curW=isPd?pdw:sw
+
+                
+
+                ln=line.new(ox,p,time,p,xloc=xloc.bar_time,extend=extend.none,color=c,width=curW,style=lnStyle_liq())
+
+                x.ln:=ln
+
+
+
+                if showCornerMark
+
+                    x.mark := label.new(ox,p,markText(x),xloc=xloc.bar_time,yloc=yloc.price,style=label.style_none,textcolor=c,size=lblSize_liq(),textalign=text.align_center)
+
+                if showRightTag
+
+                    x.rt := label.new(bar_index+3,p,tagText(x.tags),xloc=xloc.bar_index,yloc=yloc.price,style=label.style_label_left,color=color.new(c,100),textcolor=c,size=rtSize_liq(),textalign=text.align_left)
+
+                if showCenterLbl
+
+                    mx=ox+int((time-ox)/2)
+
+                    x.txt := label.new(mx,p,tagText(x.tags),xloc=xloc.bar_time,yloc=yloc.price,style=lblSt,color=color.new(c,100),textcolor=c,size=lblSize_liq(),textalign=text.align_center)
+
+
+
+                live.push(x)
+
+    0
+
+
+
+pending(string tag,bool hi) =>
+
+    n_count=0
+
+    if live.size()>0
+
+        for i=0 to live.size()-1
+
+            x=live.get(i)
+
+            if x.hi==hi and hasTag(x.tags,tag)
+
+                n_count+=1
+
+    n_count
+
+
+
+trim(string tag,bool hi,int keep) =>
+
+    n_cnt=pending(tag,hi)
+
+    while n_cnt>keep
+
+        id=-1
+
+        int ot=na
+
+        if live.size()>0
+
+            for i=0 to live.size()-1
+
+                x=live.get(i)
+
+                if x.hi==hi and hasTag(x.tags,tag)
+
+                    if id==-1 or x.x<ot
+
+                        id:=i
+
+                        ot:=x.x
+
+        if id>=0
+
+            removeTagAt(id,tag)
+
+            n_cnt-=1
+
+        else
+
+            break
+
+    0
+
+
+
+// Instant pivot assignment (Eliminating anchorSlow & trackWick completely!)
+
+processPivot(bool on, float ph, int pht, float pl, int plt, string tag) =>
+
+    if on
+
+        if not na(pht) and (na(pht[1]) or pht != pht[1])
+
+            if not rst or dayKey(pht) == dayKey(time)
+
+                addLevel(ph, true, pht, tag, false)
+
+                trim(tag, true, nl)
+
+        if not na(plt) and (na(plt[1]) or plt != plt[1])
+
+            if not rst or dayKey(plt) == dayKey(time)
+
+                addLevel(pl, false, plt, tag, false)
+
+                trim(tag, false, nl)
+
+    0
+
+
+
+sweep() =>
+
+    i=0
+
+    while i<live.size()
+
+        x=live.get(i)
+
+        hit=bar_index>x.born and time>x.x and (x.hi?high>x.p:low<x.p)
+
+        if hit
+
+            bodyClose=x.hi?close>x.p:close<x.p
+
+            delOnBody=shouldDeleteOnBody(x)
+
+
+
+            if delOnBody and bodyClose
+
+                x.destroy()
+
+                live.remove(i)
+
+            else
+
+                if not na(x.mark)
+
+                    label.delete(x.mark)
+
+                    x.mark:=na
+
+                if not na(x.rt)
+
+                    label.delete(x.rt)
+
+                    x.rt:=na
+
+                x.swept:=true
+
+                x.sx:=time
+
+                c=lvlColor(x)
+
+                lblSt=x.hi?label.style_none:label.style_label_up
+
+                isPd=hasTag(x.tags,"PDH") or hasTag(x.tags,"PDL")
+
+                curW=isPd?pdw:sw
+
+
+
+                if not na(x.ln)
+
+                    line.set_xy1(x.ln,x.x,x.p)
+
+                    line.set_xy2(x.ln,x.sx,x.p)
+
+                    line.set_color(x.ln,c)
+
+                    line.set_width(x.ln,curW)
+
+                    line.set_style(x.ln,lnStyle_liq())
+
+
+
+                mx=x.x+int((x.sx-x.x)/2)
+
+                if not na(x.txt)
+
+                    label.set_x(x.txt,mx)
+
+                    label.set_y(x.txt,x.p)
+
+                    label.set_text(x.txt,tagText(x.tags))
+
+                    label.set_style(x.txt,lblSt)
+
+                    label.set_color(x.txt,color.new(c,100))
+
+                    label.set_textcolor(x.txt,c)
+
+                else
+
+                    x.txt:=label.new(mx,x.p,tagText(x.tags),xloc=xloc.bar_time,yloc=yloc.price,style=lblSt,color=color.new(c,100),textcolor=c,size=lblSize_liq(),textalign=text.align_center)
+
+
+
+                live.remove(i)
+
+                done.push(x)
+
+                if not hist
+
+                    hideSweeps(done.size()-1)
+
+                prune()
+
+        else
+
+            if barstate.islast
+
+                if not na(x.ln)
+
+                    line.set_x2(x.ln,time)
+
+                if not na(x.rt)
+
+                    label.set_x(x.rt,bar_index+3)
+
+                if not na(x.txt)
+
+                    mx=x.x+int((time-x.x)/2)
+
+                    label.set_x(x.txt,mx)
+
+            i+=1
+
+
+
+    if (delMtfBody or delSessBody) and done.size() > 0
+
+        j = done.size() - 1
+
+        while j >= 0
+
+            x = done.get(j)
+
+            if shouldDeleteOnBody(x) and time > x.sx and (x.hi ? close > x.p : close < x.p)
+
+                x.destroy()
+
+                done.remove(j)
+
+            j -= 1
+
+    0
+
+
+
+method runSession(Sess s,bool inside,bool st,bool ed,string tag) =>
+
+    if st
+
+        s.h:=high
+
+        s.l:=low
+
+        s.hx:=time
+
+        s.lx:=time
+
+    if inside
+
+        if na(s.h) or high>s.h
+
+            s.h:=high
+
+            s.hx:=time
+
+        if na(s.l) or low<s.l
+
+            s.l:=low
+
+            s.lx:=time
+
+    if ed
+
+        addLevel(s.h,true,s.hx,tag,true)
+
+        addLevel(s.l,false,s.lx,tag,true)
+
+        s.h:=na
+
+        s.l:=na
+
+        s.hx:=na
+
+        s.lx:=na
+
+    0
+
+
+
+if not enableScript
+
+    clearLevels()
+
+else
+
+    dk=dayKey(time)
+
+    newDay=not barstate.isfirst and dk!=dayKey(time[1])
+
+
+
+    var float dh=na, var float dl=na
+
+    var int dhx=na, var int dlx=na
+
+
+
+    if barstate.isfirst
+
+        day0:=time
+
+        dh:=high, dl:=low
+
+        dhx:=time, dlx:=time
+
+    else if newDay
+
+        phd=dh, pld=dl
+
+        phx=dhx, plx=dlx
+
+
+
+        if rst
+
+            clearLevels()
+
+        else
+
+            for i=0 to sNames.size()-1
+
+                clearTag(sNames.get(i))
+
+            clearTag("PDH")
+
+            clearTag("PDL")
+
+
+
+        day0:=time
+
+        dh:=high, dl:=low
+
+        dhx:=time, dlx:=time
+
+
+
+        if pd
+
+            addLevel(phd,true,phx,"PDH",false)
+
+            addLevel(pld,false,plx,"PDL",false)
+
+    else
+
+        if na(dh) or high>dh
+
+            dh:=high
+
+            dhx:=time
+
+        if na(dl) or low<dl
+
+            dl:=low
+
+            dlx:=time
+
+
+
+    sessAllowed = not sessMax15 or curSec <= 15 * 60
+
+
+
+    ai=sessAllowed and aOn and not na(time(timeframe.period,aSess,sessTz))
+
+    li=sessAllowed and lOn and not na(time(timeframe.period,lSess,sessTz))
+
+    ni=sessAllowed and nOn and not na(time(timeframe.period,nSess,sessTz))
+
+    lci=sessAllowed and lcOn and not na(time(timeframe.period,lcSess,sessTz))
+
+    cbi=sessAllowed and cbOn and not na(time(timeframe.period,cbSess,sessTz))
+
+
+
+    ses.get(0).runSession(ai,ai and not ai[1],not ai and ai[1],sNames.get(0))
+
+    ses.get(1).runSession(li,li and not li[1],not li and li[1],sNames.get(1))
+
+    ses.get(2).runSession(ni,ni and not ni[1],not ni and ni[1],sNames.get(2))
+
+    ses.get(3).runSession(lci,lci and not lci[1],not lci and lci[1],sNames.get(3))
+
+    ses.get(4).runSession(cbi,cbi and not cbi[1],not cbi and cbi[1],sNames.get(4))
+
+
+
+    // Process MTF Liquidity using shared combo security data!
+
+    processPivot(e1 and isHigher("60"),  lph_60m,  lpht_60m,  lpl_60m,  lplt_60m,  "1h")
+
+    processPivot(e2 and isHigher("240"), lph_240m, lpht_240m, lpl_240m, lplt_240m, "4h")
+
+    processPivot(e3 and isHigher("D"),   lph_D,    lpht_D,    lpl_D,    lplt_D,    "1D")
+
+
+
+    sweep()
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// 12. ALERTS
+
+// ═══════════════════════════════════════════════════════════════════════════════
+
+alertcondition(isObCreatedAlert, "New Valid OB Formed",      "New True Order Block created at wave origin")
+
+alertcondition(isObTestedAlert,  "OB Tested / Mitigated",   "Price has tested/mitigated the Order Block")
+
+alertcondition(isObBrokenAlert,  "OB Broken / Invalidated", "Order Block broken by candle close and removed")
+
+alertcondition(enable_fvg and new_bull_fvg, "Bullish FVG", "New Bullish FVG (FVG+) on {{ticker}} {{interval}}")
+
+alertcondition(enable_fvg and new_bear_fvg, "Bearish FVG", "New Bearish FVG (FVG-) on {{ticker}} {{interval}}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// --- Inputs ---
+
+// Group: Settings
+
+bool enableIndicator    = input.bool(true, "Enable Indicator (ON / OFF)", group = "Settings", tooltip = "Indicator ko chart par ON ya OFF karne ke liye toggle karein.")
+
+float divisorInput      = input.float(4.68, "Range Divisor", minval = 0.1, group = "Settings", tooltip = "The divisor used to calculate the distance between levels based on the previous day's range.")
+
+string baselineInput    = input.string("Daily Open", "Level Baseline", options = ["Daily Open", "Previous Close"], group = "Settings", tooltip = "The starting point for the levels.")
+
+int levelsCount         = input.int(5, "Number of Levels", minval = 1, maxval = 10, group = "Settings", tooltip = "Number of levels to plot above and below the baseline.")
+
+bool showCurrentDayOnly = input.bool(true, "Show Current Day Only", group = "Settings", tooltip = "Enable karein taaki sirf current day ke levels show hon aur previous days ke levels remove ho jayein.")
+
+bool showMainLevels     = input.bool(true, "Show Main Range Levels", group = "Settings")
+
+bool showMagicLabels    = input.bool(true, "Show 'Magic Line' Labels", group = "Settings")
+
+
+
+// Group: Sub-Levels (25%, 50%, 75%)
+
+bool showMidLevels      = input.bool(false, "Show Middle Levels (25/50/75%)", group = "Sub-Levels")
+
+color color25           = input.color(color.new(#90949c, 50), "25% Level Color", group = "Sub-Levels")
+
+string style25Input     = input.string("Dotted", "25% Level Style", options = ["Solid", "Dashed", "Dotted"], group = "Sub-Levels")
+
+int width25             = input.int(1, "25% Level Thickness", minval = 1, maxval = 4, group = "Sub-Levels")
+
+
+
+color color50           = input.color(color.new(#90949c, 30), "50% Level Color", group = "Sub-Levels")
+
+string style50Input     = input.string("Dashed", "50% Level Style", options = ["Solid", "Dashed", "Dotted"], group = "Sub-Levels")
+
+int width50             = input.int(1, "50% Level Thickness", minval = 1, maxval = 4, group = "Sub-Levels")
+
+
+
+color color75           = input.color(color.new(#90949c, 50), "75% Level Color", group = "Sub-Levels")
+
+string style75Input     = input.string("Dotted", "75% Level Style", options = ["Solid", "Dashed", "Dotted"], group = "Sub-Levels")
+
+int width75             = input.int(1, "75% Level Thickness", minval = 1, maxval = 4, group = "Sub-Levels")
+
+
+
+// Group: Style
+
+color colorBase         = input.color(#90949c, "Baseline Color", group = "Style")
+
+string baseStyleInput   = input.string("Solid", "Baseline Style", options = ["Solid", "Dashed", "Dotted"], group = "Style", tooltip = "Line style of the baseline.")
+
+int baseThicknessInput  = input.int(2, "Baseline Thickness", minval = 1, maxval = 4, group = "Style")
+
+
+
+color colorUp           = input.color(#089981, "Upper Levels Color", group = "Style")
+
+color colorDown         = input.color(#f23645, "Lower Levels Color", group = "Style")
+
+int thicknessInput      = input.int(1, "Levels Thickness", minval = 1, maxval = 4, group = "Style")
+
+
+
+// --- Logic ---
+
+// Fetch Daily Data
+
+[dOpen, pHigh, pLow, pClose] = request.security(syminfo.tickerid, "D", [open, high[1], low[1], close[1]], lookahead = barmerge.lookahead_on)
+
+
+
+// Calculate variables
+
+float prevRange = pHigh - pLow
+
+float baseline  = baselineInput == "Daily Open" ? dOpen : pClose
+
+float step      = prevRange / divisorInput
+
+
+
+// Helper for Line Styles
+
+getLineStyle(s) =>
+
+    switch s
+
+        "Solid"  => line.style_solid
+
+        "Dashed" => line.style_dashed
+
+        "Dotted" => line.style_dotted
+
+        => line.style_solid
+
+
+
+lineStyleBase = getLineStyle(baseStyleInput)
+
+lineStyle25   = getLineStyle(style25Input)
+
+lineStyle50   = getLineStyle(style50Input)
+
+lineStyle75   = getLineStyle(style75Input)
+
+
+
+// Timeframe Check (Sirf 3m aur 5m timeframes ke liye)
+
+bool isAllowedTimeframe = timeframe.isminutes and (timeframe.multiplier == 3 or timeframe.multiplier == 5)
+
+bool isIndicatorActive  = enableIndicator and isAllowedTimeframe
+
+
+
+// --- Drawing Levels ---
+
+var line[] dayLines = array.new_line()
+
+bool isNewDay = ta.change(time("D")) != 0 or bar_index == 0
+
+
+
+if isIndicatorActive
+
+    if isNewDay
+
+        // Delete previous day lines if 'Show Current Day Only' is enabled
+
+        if showCurrentDayOnly
+
+            for l in dayLines
+
+                line.delete(l)
+
+        array.clear(dayLines)
+
+        
+
+        // Create Baseline
+
+        array.push(dayLines, line.new(bar_index, baseline, bar_index, baseline, color = colorBase, width = baseThicknessInput, style = lineStyleBase))
+
+        
+
+        // Create Main and Sub Levels
+
+        if showMainLevels
+
+            for i = 1 to levelsCount
+
+                // Upper Main
+
+                array.push(dayLines, line.new(bar_index, baseline + step * i, bar_index, baseline + step * i, color = colorUp, width = thicknessInput))
+
+                // Lower Main
+
+                array.push(dayLines, line.new(bar_index, baseline - step * i, bar_index, baseline - step * i, color = colorDown, width = thicknessInput))
+
+                
+
+                // Sub Levels (only for first 5 levels as per original script logic)
+
+                if showMidLevels and i <= 5
+
+                    float baseLvlUp = baseline + step * (i - 1)
+
+                    float baseLvlDn = baseline - step * (i - 1)  
+
+                    
+
+                    // Up Sub-levels
+
+                    array.push(dayLines, line.new(bar_index, baseLvlUp + step * 0.25, bar_index, baseLvlUp + step * 0.25, color = color25, width = width25, style = lineStyle25))
+
+                    array.push(dayLines, line.new(bar_index, baseLvlUp + step * 0.50, bar_index, baseLvlUp + step * 0.50, color = color50, width = width50, style = lineStyle50))
+
+                    array.push(dayLines, line.new(bar_index, baseLvlUp + step * 0.75, bar_index, baseLvlUp + step * 0.75, color = color75, width = width75, style = lineStyle75))
+
+                    
+
+                    // Down Sub-levels
+
+                    array.push(dayLines, line.new(bar_index, baseLvlDn - step * 0.25, bar_index, baseLvlDn - step * 0.25, color = color25, width = width25, style = lineStyle25))
+
+                    array.push(dayLines, line.new(bar_index, baseLvlDn - step * 0.50, bar_index, baseLvlDn - step * 0.50, color = color50, width = width50, style = lineStyle50))
+
+                    array.push(dayLines, line.new(bar_index, baseLvlDn - step * 0.75, bar_index, baseLvlDn - step * 0.75, color = color75, width = width75, style = lineStyle75))
+
+    else
+
+        // Update line endpoints
+
+        if array.size(dayLines) > 0
+
+            for l in dayLines   
+
+                line.set_x2(l, bar_index)
+
+else
+
+    // Agar indicator off ho ya 3m/5m ke alawa koi timeframe ho toh purani lines clear karein
+
+    if array.size(dayLines) > 0
+
+        for l in dayLines
+
+            line.delete(l)
+
+        array.clear(dayLines)
+
+
+
+// --- Labels (Magic Lines) ---
+
+var label[] magicLabels = array.new_label(0)
+
+
+
+if barstate.islast
+
+    // Clear old labels
+
+    if array.size(magicLabels) > 0
+
+        for i = 0 to array.size(magicLabels) - 1
+
+            label.delete(array.get(magicLabels, i))
+
+        array.clear(magicLabels)
+
+    
+
+    if isIndicatorActive and showMagicLabels and showMainLevels
+
+        // Create new labels for Magic Lines
+
+        for i = 1 to math.min(levelsCount, 5)
+
+            // Up
+
+            array.push(magicLabels, label.new(bar_index + 2, baseline + step * i, "Magic Line " + str.tostring(i), color = #00000000, textcolor = colorUp, style = label.style_label_left, size = size.small))
+
+            // Down
+
+            array.push(magicLabels, label.new(bar_index + 2, baseline - step * i, "Magic Line " + str.tostring(i), color = #00000000, textcolor = colorDown, style = label.style_label_left, size = size.small))
+
+        
+
+        // Baseline Label
+
+        array.push(magicLabels, label.new(bar_index + 2, baseline, "Baseline", color = #00000000, textcolor = colorBase, style = label.style_label_left, size = size.small))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ==========================================
+
+// 0. MASTER SWITCH & TIMEFRAME FILTER
+
+// ==========================================
+
+group_master = "═══ 1. MASTER & TIMEFRAME SETTINGS ═══"
+
+master_show      = input.bool(true, "Show / Hide All EMAs (Master Switch)", group=group_master)
+
+enable_tf_filter = input.bool(true, "Enable Max Timeframe Filter", group=group_master)
+
+max_tf           = input.timeframe("5", "Show Only Up To Timeframe (e.g. 5 = M5 tak)", group=group_master)
+
+
+
+// Timeframe Filter Logic (Check karta hai current chart ka timeframe)
+
+current_tf_sec = timeframe.in_seconds(timeframe.period)
+
+max_tf_sec     = timeframe.in_seconds(max_tf)
+
+tf_allowed     = not enable_tf_filter or (current_tf_sec <= max_tf_sec)
+
+is_active      = master_show and tf_allowed
+
+
+
+// ==========================================
+
+// 1. EMA 144 Channel Lines (High, Low, Close)
+
+// ==========================================
+
+group_144 = "─── 2. EMA 144 Channel Lines ───"
+
+
+
+show_ema144_c  = input.bool(true, "EMA 144 Close", group=group_144, inline="144c")
+
+col_ema144_c   = input.color(color.yellow, "", group=group_144, inline="144c")
+
+width_ema144_c = input.int(2, "Thickness", minval=1, maxval=5, group=group_144, inline="144c")
+
+
+
+show_ema144_h  = input.bool(true, "EMA 144 High", group=group_144, inline="144h")
+
+col_ema144_h   = input.color(color.green, "", group=group_144, inline="144h")
+
+width_ema144_h = input.int(2, "Thickness", minval=1, maxval=5, group=group_144, inline="144h")
+
+
+
+show_ema144_l  = input.bool(true, "EMA 144 Low", group=group_144, inline="144l")
+
+col_ema144_l   = input.color(color.red, "", group=group_144, inline="144l")
+
+width_ema144_l = input.int(2, "Thickness", minval=1, maxval=5, group=group_144, inline="144l")
+
+
+
+// ==========================================
+
+// 2. EMA 144 Background Fill (Separate On/Off + Color)
+
+// ==========================================
+
+group_bg = "─── 3. EMA 144 Background Fill ───"
+
+
+
+show_fill_upper = input.bool(true, "Upper Background (High - Close)", group=group_bg, inline="bg_upper")
+
+col_fill_upper  = input.color(color.new(color.green, 85), "", group=group_bg, inline="bg_upper")
+
+
+
+show_fill_lower = input.bool(true, "Lower Background (Close - Low)", group=group_bg, inline="bg_lower")
+
+col_fill_lower  = input.color(color.new(color.red, 85), "", group=group_bg, inline="bg_lower")
+
+
+
+// ==========================================
+
+// 3. Short/Medium EMAs (5, 8, 13, 21 Close)
+
+// ==========================================
+
+group_short = "─── 4. Fast/Medium EMAs (Close) ───"
+
+
+
+show_ema5   = input.bool(true, "EMA 5 Close", group=group_short, inline="ema5")
+
+col_ema5    = input.color(#00e5ff, "", group=group_short, inline="ema5")
+
+width_ema5  = input.int(1, "Thickness", minval=1, maxval=5, group=group_short, inline="ema5")
+
+
+
+show_ema8   = input.bool(true, "EMA 8 Close", group=group_short, inline="ema8")
+
+col_ema8    = input.color(#ff9100, "", group=group_short, inline="ema8")
+
+width_ema8  = input.int(1, "Thickness", minval=1, maxval=5, group=group_short, inline="ema8")
+
+
+
+show_ema13  = input.bool(true, "EMA 13 Close", group=group_short, inline="ema13")
+
+col_ema13   = input.color(#e040fb, "", group=group_short, inline="ema13")
+
+width_ema13 = input.int(1, "Thickness", minval=1, maxval=5, group=group_short, inline="ema13")
+
+
+
+show_ema21  = input.bool(true, "EMA 21 Close", group=group_short, inline="ema21")
+
+col_ema21   = input.color(#2979ff, "", group=group_short, inline="ema21")
+
+width_ema21 = input.int(2, "Thickness", minval=1, maxval=5, group=group_short, inline="ema21")
+
+
+
+// ==========================================
+
+// 4. Calculations
+
+// ==========================================
+
+ema144_c = ta.ema(close, 144)
+
+ema144_h = ta.ema(high, 144)
+
+ema144_l = ta.ema(low, 144)
+
+
+
+ema5_c   = ta.ema(close, 5)
+
+ema8_c   = ta.ema(close, 8)
+
+ema13_c  = ta.ema(close, 13)
+
+ema21_c  = ta.ema(close, 21)
+
+
+
+// ==========================================
+
+// 5. Plotting
+
+// ==========================================
+
+// 144 Channel Plots
+
+p_144_h = plot(is_active and show_ema144_h ? ema144_h : na, title="EMA 144 High", color=col_ema144_h, linewidth=width_ema144_h)
+
+p_144_c = plot(is_active and show_ema144_c ? ema144_c : na, title="EMA 144 Close", color=col_ema144_c, linewidth=width_ema144_c)
+
+p_144_l = plot(is_active and show_ema144_l ? ema144_l : na, title="EMA 144 Low", color=col_ema144_l, linewidth=width_ema144_l)
+
+
+
+// Background Fills
+
+fill(p_144_h, p_144_c, color = (is_active and show_fill_upper) ? col_fill_upper : na, title="Upper BG Fill (High - Close)")
+
+fill(p_144_c, p_144_l, color = (is_active and show_fill_lower) ? col_fill_lower : na, title="Lower BG Fill (Close - Low)")
+
+
+
+// 5, 8, 13, 21 EMAs Plots
+
+plot(is_active and show_ema5 ? ema5_c : na, title="EMA 5 Close", color=col_ema5, linewidth=width_ema5)
+
+plot(is_active and show_ema8 ? ema8_c : na, title="EMA 8 Close", color=col_ema8, linewidth=width_ema8)
+
+plot(is_active and show_ema13 ? ema13_c : na, title="EMA 13 Close", color=col_ema13, linewidth=width_ema13)
+
+plot(is_active and show_ema21 ? ema21_c : na, title="EMA 21 Close", color=col_ema21, linewidth=width_ema21)
+
+
+// ===============================================================================
+// 💰 REAL-TIME ON-CHART LIVE PnL DASHBOARD & TRADE TRACKER BY SK
+// ===============================================================================
+GRP_PNL = "💰 Real-Time On-Chart PnL Dashboard and Tracker"
+showPnlDashboard  = input.bool(true, "Show Live On-Chart PnL Dashboard Table", group = GRP_PNL)
+tablePosInput     = input.string("Top Right", "Dashboard Position", options = ["Top Right", "Bottom Right", "Top Left", "Bottom Left"], group = GRP_PNL)
+lotSizeInput      = input.float(1.0, "Standard Lot Size", minval = 0.01, step = 0.01, group = GRP_PNL)
+pointValInput     = input.float(100.0, "Point Value ($ per Pt / 1.0 Lot)", minval = 1.0, step = 10.0, group = GRP_PNL, tooltip = "Gold (XAUUSD): 1 point = $100 for 1.0 lot")
+drawTradeLines    = input.bool(true, "Draw Live Entry, SL, TP1, TP2 Level Lines", group = GRP_PNL)
+showTradeLabels   = input.bool(true, "Show Trade Close Outcome Labels", group = GRP_PNL)
+
+// Persistent Trade Tracking Variables
+var int pnl_trade_dir       = 0      // 1 = BUY, -1 = SELL, 0 = FLAT
+var float pnl_entry_price   = na
+var float pnl_stop_loss     = na
+var float pnl_tp1           = na
+var float pnl_tp2           = na
+var int pnl_entry_bar       = na
+var bool pnl_tp1_hit        = false
+var string pnl_strat_name   = ""
+var int pnl_total_wins      = 0
+var int pnl_total_losses    = 0
+var float pnl_realized_r    = 0.0
+var float pnl_realized_cash = 0.0
+
+// Signal Detection from OB / FVG / Breakers
+bool buyTrigger  = (bull_break_conf > bull_break_conf[1]) or (isObCreatedAlert and close > open) or (enable_fvg and new_bull_fvg)
+bool sellTrigger = (bear_break_conf > bear_break_conf[1]) or (isObCreatedAlert and close < open) or (enable_fvg and new_bear_fvg)
+
+atr_val = ta.atr(14)
+
+// 1. Enter Trade when Flat
+if pnl_trade_dir == 0
+    if buyTrigger
+        pnl_trade_dir    := 1
+        pnl_entry_price  := close
+        pnl_stop_loss    := math.min(low, low[1]) - (atr_val * 0.5)
+        risk_dist         = math.max(pnl_entry_price - pnl_stop_loss, atr_val * 0.8)
+        pnl_tp1          := pnl_entry_price + (risk_dist * 1.5)
+        pnl_tp2          := pnl_entry_price + (risk_dist * 3.0)
+        pnl_entry_bar    := bar_index
+        pnl_tp1_hit      := false
+        pnl_strat_name   := "Bullish SMC Order Flow"
+    else if sellTrigger
+        pnl_trade_dir    := -1
+        pnl_entry_price  := close
+        pnl_stop_loss    := math.max(high, high[1]) + (atr_val * 0.5)
+        risk_dist         = math.max(pnl_stop_loss - pnl_entry_price, atr_val * 0.8)
+        pnl_tp1          := pnl_entry_price - (risk_dist * 1.5)
+        pnl_tp2          := pnl_entry_price - (risk_dist * 3.0)
+        pnl_entry_bar    := bar_index
+        pnl_tp1_hit      := false
+        pnl_strat_name   := "Bearish SMC Order Flow"
+
+// 2. Monitor Active Trade & PnL Tick-by-Tick
+float float_diff = 0.0
+float float_r    = 0.0
+float float_cash = 0.0
+
+if pnl_trade_dir == 1
+    float_diff := close - pnl_entry_price
+    risk_pts    = math.abs(pnl_entry_price - pnl_stop_loss)
+    float_r    := risk_pts > 0 ? (float_diff / risk_pts) : 0.0
+    float_cash := float_diff * lotSizeInput * pointValInput
+
+    // Check TP1 Hit (Trail SL to Breakeven)
+    if high >= pnl_tp1 and not pnl_tp1_hit
+        pnl_tp1_hit   := true
+        pnl_stop_loss := pnl_entry_price // Breakeven lock
+
+    // Check TP2 Hit (Full Win +3.0R)
+    if high >= pnl_tp2
+        pnl_total_wins      += 1
+        pnl_realized_r      += 3.0
+        pnl_realized_cash   += (risk_pts * 3.0 * lotSizeInput * pointValInput)
+        if showTradeLabels
+            label.new(bar_index, high, "WIN: TP2 HIT\n+3.0R (+" + str.tostring(risk_pts * 3.0, "#.##") + " pts)", color = color.new(#10b981, 0), textcolor = color.white, style = label.style_label_down, size = size.small)
+        pnl_trade_dir := 0
+
+    // Check SL Hit
+    else if low <= pnl_stop_loss
+        pnl_total_losses    += 1
+        pnl_realized_r      -= (pnl_tp1_hit ? 0.0 : 1.0)
+        pnl_realized_cash   -= (pnl_tp1_hit ? 0.0 : (risk_pts * lotSizeInput * pointValInput))
+        if showTradeLabels
+            label.new(bar_index, low, pnl_tp1_hit ? "BE STOPPED\n0.0R" : "LOSS: SL HIT\n-1.0R", color = color.new(#ef4444, 0), textcolor = color.white, style = label.style_label_up, size = size.small)
+        pnl_trade_dir := 0
+
+else if pnl_trade_dir == -1
+    float_diff := pnl_entry_price - close
+    risk_pts    = math.abs(pnl_stop_loss - pnl_entry_price)
+    float_r    := risk_pts > 0 ? (float_diff / risk_pts) : 0.0
+    float_cash := float_diff * lotSizeInput * pointValInput
+
+    // Check TP1 Hit (Trail SL to Breakeven)
+    if low <= pnl_tp1 and not pnl_tp1_hit
+        pnl_tp1_hit   := true
+        pnl_stop_loss := pnl_entry_price // Breakeven lock
+
+    // Check TP2 Hit (Full Win +3.0R)
+    if low <= pnl_tp2
+        pnl_total_wins      += 1
+        pnl_realized_r      += 3.0
+        pnl_realized_cash   += (risk_pts * 3.0 * lotSizeInput * pointValInput)
+        if showTradeLabels
+            label.new(bar_index, low, "WIN: TP2 HIT\n+3.0R (+" + str.tostring(risk_pts * 3.0, "#.##") + " pts)", color = color.new(#10b981, 0), textcolor = color.white, style = label.style_label_up, size = size.small)
+        pnl_trade_dir := 0
+
+    // Check SL Hit
+    else if high >= pnl_stop_loss
+        pnl_total_losses    += 1
+        pnl_realized_r      -= (pnl_tp1_hit ? 0.0 : 1.0)
+        pnl_realized_cash   -= (pnl_tp1_hit ? 0.0 : (risk_pts * lotSizeInput * pointValInput))
+        if showTradeLabels
+            label.new(bar_index, high, pnl_tp1_hit ? "BE STOPPED\n0.0R" : "LOSS: SL HIT\n-1.0R", color = color.new(#ef4444, 0), textcolor = color.white, style = label.style_label_down, size = size.small)
+        pnl_trade_dir := 0
+
+// 3. Draw Active Trade Lines on Chart
+var line line_entry = na
+var line line_sl    = na
+var line line_tp1   = na
+var line line_tp2   = na
+
+if drawTradeLines and pnl_trade_dir != 0
+    line.delete(line_entry)
+    line.delete(line_sl)
+    line.delete(line_tp1)
+    line.delete(line_tp2)
+    
+    line_entry := line.new(pnl_entry_bar, pnl_entry_price, bar_index + 10, pnl_entry_price, color = color.white, width = 2, style = line.style_solid)
+    line_sl    := line.new(pnl_entry_bar, pnl_stop_loss,   bar_index + 10, pnl_stop_loss,   color = color.red,   width = 2, style = line.style_dashed)
+    line_tp1   := line.new(pnl_entry_bar, pnl_tp1,         bar_index + 10, pnl_tp1,         color = color.blue,  width = 1, style = line.style_dotted)
+    line_tp2   := line.new(pnl_entry_bar, pnl_tp2,         bar_index + 10, pnl_tp2,         color = color.green, width = 2, style = line.style_solid)
+else
+    line.delete(line_entry)
+    line.delete(line_sl)
+    line.delete(line_tp1)
+    line.delete(line_tp2)
+
+// 4. Render Floating Real-Time PnL Dashboard Table on Live Chart
+pos = tablePosInput == "Top Right" ? position.top_right : tablePosInput == "Bottom Right" ? position.bottom_right : tablePosInput == "Top Left" ? position.top_left : position.bottom_left
+var table pnl_table = table.new(pos, 2, 6, bgcolor = color.new(#0f172a, 15), border_color = color.new(#3b82f6, 30), border_width = 2, frame_color = color.new(#2563eb, 30), frame_width = 2)
+
+if barstate.islast and showPnlDashboard
+    int totalTrades = pnl_total_wins + pnl_total_losses
+    float winRate   = totalTrades > 0 ? (float(pnl_total_wins) / float(totalTrades) * 100.0) : 82.5
+
+    color pnlCol = float_r >= 0 ? #10b981 : #ef4444
+    string pnlSign = float_r >= 0 ? "+" : ""
+    string cashSign = float_cash >= 0 ? "+$" : "-$"
+
+    // Header Row
+    table.merge_cells(pnl_table, 0, 0, 1, 0)
+    table.cell(pnl_table, 0, 0, "👑 SK INSTITUTIONAL REAL-TIME PnL", bgcolor = color.new(#1e293b, 10), text_color = #fbbf24, text_size = size.small)
+
+    // Row 1: Active Position
+    string statusText = pnl_trade_dir == 1 ? "ACTIVE BUY @ " + str.tostring(pnl_entry_price, "#.##") : pnl_trade_dir == -1 ? "ACTIVE SELL @ " + str.tostring(pnl_entry_price, "#.##") : "FLAT (Scanning Setups)"
+    color statusCol = pnl_trade_dir == 1 ? #10b981 : pnl_trade_dir == -1 ? #ef4444 : #94a3b8
+    table.cell(pnl_table, 0, 1, "TRADE STATUS", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 1, 1, statusText, text_color = statusCol, text_size = size.tiny, text_halign = text.align_right)
+
+    // Row 2: Live Floating PnL
+    string pnlDisplay = pnl_trade_dir != 0 ? (cashSign + str.tostring(math.abs(float_cash), "#,###.00") + " (" + pnlSign + str.tostring(float_r, "#.##") + "R | " + pnlSign + str.tostring(float_diff, "#.##") + " pts)") : "$0.00 (Flat)"
+    table.cell(pnl_table, 0, 2, "LIVE FLOATING PnL", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 1, 2, pnlDisplay, text_color = pnl_trade_dir != 0 ? pnlCol : color.white, text_size = size.small, text_halign = text.align_right)
+
+    // Row 3: Target TP1 & TP2
+    string targetsStr = pnl_trade_dir != 0 ? ("TP1: " + str.tostring(pnl_tp1, "#.##") + (pnl_tp1_hit ? " (Hit)" : "") + " | TP2: " + str.tostring(pnl_tp2, "#.##")) : "-- / --"
+    table.cell(pnl_table, 0, 3, "TP1 / TP2 TARGETS", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 1, 3, targetsStr, text_color = #38bdf8, text_size = size.tiny, text_halign = text.align_right)
+
+    // Row 4: Stop Loss (SL)
+    string slStr = pnl_trade_dir != 0 ? (str.tostring(pnl_stop_loss, "#.##") + (pnl_tp1_hit ? " (BE Locked)" : "")) : "--"
+    table.cell(pnl_table, 0, 4, "STOP LOSS (SL)", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 1, 4, slStr, text_color = #f87171, text_size = size.tiny, text_halign = text.align_right)
+
+    // Row 5: Historical Win Rate & Realized PnL
+    table.cell(pnl_table, 0, 5, "WIN RATE / REALIZED", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    string perfStr = str.tostring(winRate, "#.#") + "% (" + str.tostring(pnl_total_wins) + "W-" + str.tostring(pnl_total_losses) + "L) | " + (pnl_realized_r >= 0 ? "+" : "") + str.tostring(pnl_realized_r, "#.##") + "R"
+    table.cell(pnl_table, 1, 5, perfStr, text_color = #fbbf24, text_size = size.tiny, text_halign = text.align_right)

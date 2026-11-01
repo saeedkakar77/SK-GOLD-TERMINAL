@@ -35,6 +35,8 @@ class Signal:
     closed_price: Optional[float] = None
     result: Optional[str] = None           # "WIN", "LOSS", "EXPIRED"
     pnl_r: Optional[float] = None          # +3.0R or -1.0R
+    pnl_pts: Optional[float] = None        # Points/Pips floating or realized
+    pnl_usd: Optional[float] = None        # USD dollar amount floating or realized
     live_status_note: Optional[str] = None # e.g. "🎯 TP 1 HIT (1:1.5 RR)! Running to TP 2"
     style: str = "intraday"                # "scalp" (M3-M15), "intraday" (M30-H4), "swing" (1D-1M)
 
