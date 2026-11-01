@@ -47,7 +47,6 @@ class ICTBiasEngine:
         eq = (dr_high + dr_low) / 2.0
         
         price = curr.close
-        zone = "PREMIUM (Institutional Sell Side)" if price >= eq else "DISCOUNT (Institutional Buy Side)"
         pct_in_range = ((price - dr_low) / (dr_high - dr_low) * 100.0) if dr_high > dr_low else 50.0
 
         # 2. Key Highs & Lows (PMH/PML, PWH/PWL, PDH/PDL)
@@ -118,6 +117,22 @@ class ICTBiasEngine:
                     dol = erl_ssl
                     dol_type = "SSL (Sell-Side Liquidity)"
                     narrative = f"Price reacting from Premium with bearish rejection towards Equilibrium."
+
+        # Dynamic Institutional SMC Zone Definition (Aware of HTF Order Flow)
+        if price >= eq:
+            if bias == "BEARISH":
+                zone = "PREMIUM (Institutional Sell Zone / Supply)"
+            elif bias == "BULLISH":
+                zone = "PREMIUM (Bullish Expansion / BSL Run)"
+            else:
+                zone = "PREMIUM (Equilibrium High)"
+        else:
+            if bias == "BEARISH":
+                zone = "DISCOUNT (Bearish Delivery / SSL Run Target)"
+            elif bias == "BULLISH":
+                zone = "DISCOUNT (Institutional Buy Zone / Demand)"
+            else:
+                zone = "DISCOUNT (Equilibrium Low)"
 
         return {
             "tf": tf_label,

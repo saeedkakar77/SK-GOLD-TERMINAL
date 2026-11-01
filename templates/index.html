@@ -680,7 +680,7 @@
                         <button class="tv-tf-btn" data-tf="D" onclick="setTvTimeframe('D')" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; cursor: pointer;">1D</button>
                     </div>
                     <button onclick="openPineScriptModal()" class="btn" style="background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10b981; color: #34d399; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 6px; cursor: pointer; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);">
-                        📜 TradingView PnL Script
+                        📜 TradingView Indicator Script
                     </button>
                     <button onclick="openStrategiesModal()" class="btn" style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #f59e0b; color: #fbbf24; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 6px; cursor: pointer; box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);">
                         ⚙️ 16 Strategies Daba (<span id="chartActiveCount">16/16 ON</span>)
@@ -690,29 +690,6 @@
 
             <!-- TradingView Chart Container with complete options -->
             <div class="tradingview-widget-container" style="flex: 1; height: 100%; min-height: 600px; width: 100%; position: relative;">
-                <!-- 💰 FLOATING LIVE ON-CHART PnL & SIGNAL HUD DASHBOARD -->
-                <div id="chartPnlHud" style="position: absolute; top: 12px; left: 16px; z-index: 10; background: rgba(15, 23, 42, 0.94); border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); backdrop-filter: blur(8px); display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="dot-pulse" id="hudPnlDot" style="background: #10b981;"></span>
-                        <div>
-                            <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">ACTIVE LIVE PnL</div>
-                            <div id="hudPnlValue" class="mono" style="font-size: 15px; font-weight: 900; color: #10b981;">+$0.00 (+0.00R)</div>
-                        </div>
-                    </div>
-                    <div style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 12px;">
-                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8;">ACTIVE TRADE & STRATEGY</div>
-                        <div id="hudTradeInfo" style="font-size: 12px; font-weight: 800; color: #f8fafc;">Scanning 16 Strategies...</div>
-                    </div>
-                    <div id="hudLevelsBox" style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 12px; display: none;">
-                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8;">ENTRY / SL / TARGETS</div>
-                        <div id="hudLevelsInfo" class="mono" style="font-size: 11.5px; font-weight: 800; color: #cbd5e1;">--</div>
-                    </div>
-                    <div style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 12px;">
-                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8;">HISTORICAL WIN RATE</div>
-                        <div id="hudWinRate" class="mono" style="font-size: 13px; font-weight: 900; color: #fbbf24;">82.4% (+42.5R)</div>
-                    </div>
-                </div>
-
                 <div id="tradingview_gold_chart" style="height: 100%; width: 100%; min-height: 600px;"></div>
             </div>
         </div>
@@ -803,119 +780,6 @@
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         
-        function renderPositionChartBox(sig) {
-            const isBuy = sig.action === 'BUY';
-            const isTpHit = (sig.status === 'TP1_HIT' || sig.tp1_hit);
-            const curPnlR = (sig.pnl_r !== undefined) ? sig.pnl_r : (sig.result === 'WIN' ? 3.0 : 0.0);
-            const curPnlPts = (sig.pnl_pts !== undefined) ? sig.pnl_pts : 0.0;
-            const curPnlUsd = (sig.pnl_usd !== undefined) ? sig.pnl_usd : 0.0;
-            const isPnlProf = curPnlR >= 0;
-            const pnlColor = isPnlProf ? '#10b981' : '#ef4444';
-
-            // Coordinates for 160px height TradingView Position Box
-            const slY = isBuy ? 130 : 25;
-            const entryY = 75;
-            const tp1Y = isBuy ? 45 : 105;
-            const tp2Y = isBuy ? 20 : 135;
-
-            const riskBoxY = isBuy ? entryY : slY;
-            const riskBoxHeight = isBuy ? (slY - entryY) : (entryY - slY);
-
-            const rewardBoxY = isBuy ? tp2Y : entryY;
-            const rewardBoxHeight = isBuy ? (entryY - tp2Y) : (tp2Y - entryY);
-
-            return `
-                <div style="margin: 12px 0; background: #0b1120; border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; position: relative; box-shadow: inset 0 2px 10px rgba(0,0,0,0.6);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.95); padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px;">
-                        <div style="display: flex; align-items: center; gap: 6px;">
-                            <span style="font-size: 13px;">📈</span>
-                            <strong style="color: #cbd5e1; letter-spacing: 0.5px;">ON-CHART SETUP & RISK/REWARD BOX [${sig.symbol} • ${sig.timeframe.toUpperCase()}]</strong>
-                        </div>
-                        <div style="display: flex; gap: 6px;">
-                            <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; padding: 1px 6px; border-radius: 3px; font-weight: 800; font-size: 9.5px;">1:3.0 RR SETUP</span>
-                            <span style="background: ${isBuy ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; color: ${isBuy ? '#10b981' : '#ef4444'}; padding: 1px 6px; border-radius: 3px; font-weight: 900; font-size: 9.5px;">${isBuy ? 'LONG' : 'SHORT'}</span>
-                        </div>
-                    </div>
-
-                    <div style="position: relative; width: 100%; height: 160px; background: #080d16;">
-                        <svg width="100%" height="160" viewBox="0 0 540 160" preserveAspectRatio="none" style="display: block;">
-                            <defs>
-                                <pattern id="grid_${sig.id}" width="40" height="30" patternUnits="userSpaceOnUse">
-                                    <path d="M 40 0 L 0 0 0 30" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
-                                </pattern>
-                            </defs>
-                            <rect width="540" height="160" fill="url(#grid_${sig.id})" />
-
-                            <!-- Background Candlestick Action Prior to Setup -->
-                            <line x1="40" y1="50" x2="40" y2="90" stroke="#4ade80" stroke-width="1.5"/>
-                            <rect x="35" y="60" width="10" height="20" fill="#22c55e" rx="1"/>
-
-                            <line x1="80" y1="40" x2="80" y2="105" stroke="#f87171" stroke-width="1.5"/>
-                            <rect x="75" y="55" width="10" height="35" fill="#ef4444" rx="1"/>
-
-                            <line x1="120" y1="55" x2="120" y2="115" stroke="#f87171" stroke-width="1.5"/>
-                            <rect x="115" y="70" width="10" height="30" fill="#ef4444" rx="1"/>
-
-                            <line x1="160" y1="45" x2="160" y2="95" stroke="#4ade80" stroke-width="1.5"/>
-                            <rect x="155" y="55" width="10" height="25" fill="#22c55e" rx="1"/>
-
-                            <!-- Trigger Candle -->
-                            <line x1="200" y1="${isBuy ? 120 : 20}" x2="200" y2="${isBuy ? 35 : 125}" stroke="${isBuy ? '#4ade80' : '#f87171'}" stroke-width="2"/>
-                            <rect x="194" y="${isBuy ? 45 : 30}" width="12" height="65" fill="${isBuy ? '#22c55e' : '#ef4444'}" rx="1"/>
-
-                            <!-- SHADED RISK BOX (Red / Gray Stop Loss Zone) -->
-                            <rect x="206" y="${riskBoxY}" width="334" height="${riskBoxHeight}" fill="rgba(239, 68, 68, 0.22)" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
-
-                            <!-- SHADED REWARD BOX (Cyan / Green Target Zone) -->
-                            <rect x="206" y="${rewardBoxY}" width="334" height="${rewardBoxHeight}" fill="rgba(56, 189, 248, 0.28)" stroke="#38bdf8" stroke-width="1.5"/>
-
-                            <!-- Internal Running Candles Inside Position Box -->
-                            <line x1="240" y1="${isBuy ? 85 : 45}" x2="240" y2="${isBuy ? 45 : 85}" stroke="${isBuy ? '#4ade80' : '#f87171'}" stroke-width="1.5"/>
-                            <rect x="235" y="${isBuy ? 55 : 48}" width="10" height="28" fill="${isBuy ? '#22c55e' : '#ef4444'}" rx="1"/>
-
-                            <line x1="280" y1="${isBuy ? 65 : 60}" x2="280" y2="${isBuy ? 35 : 110}" stroke="${isBuy ? '#4ade80' : '#f87171'}" stroke-width="1.5"/>
-                            <rect x="275" y="${isBuy ? 40 : 65}" width="10" height="40" fill="${isBuy ? '#22c55e' : '#ef4444'}" rx="1"/>
-
-                            <line x1="320" y1="${isBuy ? 50 : 75}" x2="320" y2="${isBuy ? 25 : 120}" stroke="${isBuy ? '#4ade80' : '#f87171'}" stroke-width="1.5"/>
-                            <rect x="315" y="${isBuy ? 30 : 80}" width="10" height="35" fill="${isBuy ? '#22c55e' : '#ef4444'}" rx="1"/>
-
-                            <!-- Level Lines -->
-                            <line x1="0" y1="${entryY}" x2="540" y2="${entryY}" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4,2"/>
-                            <line x1="0" y1="${slY}" x2="540" y2="${slY}" stroke="#ef4444" stroke-width="2"/>
-                            <line x1="0" y1="${tp1Y}" x2="540" y2="${tp1Y}" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="2,2"/>
-                            <line x1="0" y1="${tp2Y}" x2="540" y2="${tp2Y}" stroke="#10b981" stroke-width="2"/>
-
-                            <!-- Level Tags on Right Axis -->
-                            <rect x="430" y="${slY - 9}" width="105" height="17" fill="#7f1d1d" rx="3"/>
-                            <text x="435" y="${slY + 3}" fill="#fca5a5" font-size="9.5" font-family="monospace" font-weight="bold">SL: ${sig.stop_loss}</text>
-
-                            <rect x="420" y="${entryY - 9}" width="115" height="17" fill="#1e293b" rx="3"/>
-                            <text x="425" y="${entryY + 3}" fill="#ffffff" font-size="9.5" font-family="monospace" font-weight="bold">ENTRY: ${sig.entry_price}</text>
-
-                            <rect x="430" y="${tp1Y - 9}" width="105" height="17" fill="#0369a1" rx="3"/>
-                            <text x="435" y="${tp1Y + 3}" fill="#7dd3fc" font-size="9.5" font-family="monospace" font-weight="bold">TP1: ${sig.take_profit_1}</text>
-
-                            <rect x="430" y="${tp2Y - 9}" width="105" height="17" fill="#065f46" rx="3"/>
-                            <text x="435" y="${tp2Y + 3}" fill="#6ee7b7" font-size="9.5" font-family="monospace" font-weight="bold">TP2: ${sig.take_profit_2}</text>
-                        </svg>
-
-                        <!-- Floating Real-Time PnL Badge Centered on Position Box -->
-                        <div style="position: absolute; top: 12px; left: 16px; background: rgba(15, 23, 42, 0.94); border: 1.5px solid ${pnlColor}; border-radius: 6px; padding: 5px 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(6px); display: flex; align-items: center; gap: 8px;">
-                            <span class="dot-pulse" style="background: ${pnlColor};"></span>
-                            <div class="mono" style="font-size: 12.5px; font-weight: 900; color: ${pnlColor};">
-                                ${curPnlPts >= 0 ? '+' : ''}${curPnlPts} pts (${curPnlR >= 0 ? '+' : ''}${curPnlR}R) • <span style="color: #fff;">${curPnlUsd >= 0 ? '+$' : '-$'}${Math.abs(curPnlUsd).toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        <div style="position: absolute; bottom: 8px; left: 16px; background: rgba(0,0,0,0.75); padding: 3px 8px; border-radius: 4px; font-size: 10px; color: #94a3b8; border: 1px solid rgba(255,255,255,0.08);">
-                            ${isTpHit ? '🎯 <strong style="color: #10b981;">TP1 Hit</strong> • Trailing BE' : '⏳ <strong style="color: #38bdf8;">Running in Position Box</strong>'}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-
         function dismissTelegramPopup() {
             const p = document.getElementById('telegramAlertPopup');
             if (p) p.style.display = 'none';
@@ -1449,12 +1313,7 @@ SL: ${sig.stop_loss}` : body;
                         `;
                     }
 
-                    const curPnlR = (sig.pnl_r !== undefined) ? sig.pnl_r : 0.0;
-                    const curPnlPts = (sig.pnl_pts !== undefined) ? sig.pnl_pts : 0.0;
-                    const curPnlUsd = (sig.pnl_usd !== undefined) ? sig.pnl_usd : 0.0;
-                    const isPnlProf = curPnlR >= 0;
-                    const pnlColor = isPnlProf ? '#10b981' : '#ef4444';
-                    const pnlBg = isPnlProf ? 'rgba(16, 185, 129, 0.14)' : 'rgba(239, 68, 68, 0.14)';
+
 
                     const cardBorder = isTpHit 
                         ? 'border: 2px solid #10b981; box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);'
@@ -1477,21 +1336,6 @@ SL: ${sig.stop_loss}` : body;
                             </div>
 
                             ${statusBanner}
-
-                            <!-- 💰 REAL-TIME FLOATING PnL METRIC BANNER -->
-                            <div id="sigPnlBanner_${sig.id}" style="margin: 8px 0; background: ${pnlBg}; border: 1.5px solid ${pnlColor}; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 15px;">💰</span>
-                                    <strong style="color: ${pnlColor}; font-size: 12px;">LIVE FLOATING PnL:</strong>
-                                </div>
-                                <div class="mono" id="sigPnlVal_${sig.id}" style="font-size: 14px; font-weight: 900; color: ${pnlColor}; text-shadow: 0 0 10px ${pnlColor}44;">
-                                    ${curPnlPts >= 0 ? '+' : ''}${curPnlPts} pts | <strong style="font-size: 15px;">${curPnlR >= 0 ? '+' : ''}${curPnlR}R</strong> (${curPnlUsd >= 0 ? '+$' : '-$'}${Math.abs(curPnlUsd).toLocaleString()})
-                                </div>
-                            </div>
-
-                            ${renderPositionChartBox(sig)}
-
-                            ${renderPositionChartBox(sig)}
 
                             <div class="signal-levels mono">
                                 <div class="level-box">
@@ -1573,8 +1417,8 @@ SL: ${sig.stop_loss}` : body;
 
                             <div style="margin: 8px 0; background: ${isWin ? 'rgba(16, 185, 129, 0.14)' : 'rgba(239, 68, 68, 0.14)'}; border: 1.5px solid ${outcomeColor}; padding: 8px 12px; border-radius: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
                                 <div style="color: #cbd5e1;">${sig.live_status_note || (isWin ? 'Take Profit 2 achieved' : 'Stop loss triggered')}</div>
-                                <div class="mono" style="font-weight: 900; color: ${outcomeColor}; font-size: 14px;">
-                                    Realized PnL: ${sig.pnl_r >= 0 ? '+' : ''}${sig.pnl_r || (isWin ? 3.0 : -1.0)}R (${(sig.pnl_pts !== undefined ? (sig.pnl_pts >= 0 ? '+' : '') + sig.pnl_pts + ' pts' : '')} | ${(sig.pnl_usd !== undefined ? (sig.pnl_usd >= 0 ? '+$' : '-$') + Math.abs(sig.pnl_usd).toLocaleString() : '')})
+                                <div class="mono" style="font-weight: 800; color: ${outcomeColor}; font-size: 13px;">
+                                    ${isWin ? 'TARGET REACHED (+3.0 RR)' : 'STOP TRIGGERED'}
                                 </div>
                             </div>
 
@@ -1592,8 +1436,8 @@ SL: ${sig.stop_loss}` : body;
                                     <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${sig.closed_price || sig.take_profit_2}</div>
                                 </div>
                                 <div class="level-box">
-                                    <div class="level-label">PNL PROFIT / LOSS</div>
-                                    <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${sig.pnl_r >= 0 ? '+' : ''}${sig.pnl_r || (isWin ? 3.0 : -1.0)}R</div>
+                                    <div class="level-label">RISK REWARD</div>
+                                    <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${isWin ? '1:3.0 RR' : '1:1.0 RR'}</div>
                                 </div>
                             </div>
 
@@ -1646,24 +1490,6 @@ SL: ${sig.stop_loss}` : body;
                 // Smooth in-place DOM update (ZERO BLINKING!)
                 if (currentSignalsTab === 'active') {
                     displayList.forEach(sig => {
-                        const pnlValEl = document.getElementById(`sigPnlVal_${sig.id}`);
-                        const pnlBannerEl = document.getElementById(`sigPnlBanner_${sig.id}`);
-                        const curPnlR = (sig.pnl_r !== undefined) ? sig.pnl_r : 0.0;
-                        const curPnlPts = (sig.pnl_pts !== undefined) ? sig.pnl_pts : 0.0;
-                        const curPnlUsd = (sig.pnl_usd !== undefined) ? sig.pnl_usd : 0.0;
-                        const isPnlProf = curPnlR >= 0;
-                        const pnlColor = isPnlProf ? '#10b981' : '#ef4444';
-                        const pnlBg = isPnlProf ? 'rgba(16, 185, 129, 0.14)' : 'rgba(239, 68, 68, 0.14)';
-
-                        if (pnlValEl) {
-                            pnlValEl.style.color = pnlColor;
-                            pnlValEl.innerHTML = `${curPnlPts >= 0 ? '+' : ''}${curPnlPts} pts | <strong style="font-size: 15px;">${curPnlR >= 0 ? '+' : ''}${curPnlR}R</strong> (${curPnlUsd >= 0 ? '+$' : '-$'}${Math.abs(curPnlUsd).toLocaleString()})`;
-                        }
-                        if (pnlBannerEl) {
-                            pnlBannerEl.style.background = pnlBg;
-                            pnlBannerEl.style.borderColor = pnlColor;
-                        }
-
                         const noteEl = document.getElementById(`sigLiveNote_${sig.id}`);
                         if (noteEl && sig.live_status_note) {
                             noteEl.innerText = sig.live_status_note;
@@ -2221,115 +2047,7 @@ SL: ${sig.stop_loss}` : body;
                 if (d.signals) {
                     updateSignalsFeed(d.signals.active, d.signals.history, d.signals.stats);
 
-                    // Update Live Chart Floating PnL & Signal HUD
-                    const hudPnlVal = document.getElementById('hudPnlValue');
-                    const hudTradeInfo = document.getElementById('hudTradeInfo');
-                    const hudWinRate = document.getElementById('hudWinRate');
-                    const hudPnlDot = document.getElementById('hudPnlDot');
-                    const hudLevelsBox = document.getElementById('hudLevelsBox');
-                    const hudLevelsInfo = document.getElementById('hudLevelsInfo');
-                    const hudCard = document.getElementById('chartPnlHud');
-
-                    if (cachedActiveSignals.length > 0) {
-                        const topSig = cachedActiveSignals[0];
-                        const rVal = (topSig.pnl_r !== undefined) ? topSig.pnl_r : 0.0;
-                        const ptsVal = (topSig.pnl_pts !== undefined) ? topSig.pnl_pts : 0.0;
-                        const usdVal = (topSig.pnl_usd !== undefined) ? topSig.pnl_usd : 0.0;
-                        const isProf = rVal >= 0;
-                        const pColor = isProf ? '#10b981' : '#ef4444';
-
-                        if (hudCard) hudCard.style.borderColor = pColor;
-                        if (hudPnlDot) hudPnlDot.style.background = pColor;
-                        if (hudPnlVal) {
-                            hudPnlVal.innerText = `${usdVal >= 0 ? '+$' : '-$'}${Math.abs(usdVal).toLocaleString()} (${rVal >= 0 ? '+' : ''}${rVal}R | ${ptsVal >= 0 ? '+' : ''}${ptsVal} pts)`;
-                            hudPnlVal.style.color = pColor;
-                        }
-                        if (hudTradeInfo) {
-                            const badgeBg = topSig.action === 'BUY' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)';
-                            const badgeBorder = topSig.action === 'BUY' ? '#10b981' : '#ef4444';
-                            const badgeCol = topSig.action === 'BUY' ? '#10b981' : '#ef4444';
-                            hudTradeInfo.innerHTML = `
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="background: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${badgeCol}; padding: 2px 7px; border-radius: 4px; font-weight: 900; font-size: 11px;">${topSig.action}</span>
-                                    <strong style="color: #fbbf24; font-size: 13px;">${topSig.strategy_name}</strong>
-                                    <span class="mono" style="color: #94a3b8; font-size: 11px;">[${topSig.timeframe.toUpperCase()}]</span>
-                                </div>
-                            `;
-                        }
-                        if (hudLevelsBox && hudLevelsInfo) {
-                            hudLevelsBox.style.display = 'block';
-                            hudLevelsInfo.innerHTML = `
-                                Entry: <strong style="color: #fff;">${topSig.entry_price}</strong> | 
-                                SL: <strong style="color: #f87171;">${topSig.stop_loss}</strong> | 
-                                TP1: <strong style="color: #38bdf8;">${topSig.take_profit_1}</strong> | 
-                                TP2: <strong style="color: #34d399;">${topSig.take_profit_2}</strong>
-                            `;
-                        }
-                    } else {
-                        if (hudCard) hudCard.style.borderColor = 'rgba(255,255,255,0.15)';
-                        if (hudPnlDot) hudPnlDot.style.background = '#94a3b8';
-                        if (hudPnlVal) {
-                            hudPnlVal.innerText = "$0.00 (Flat / Scanning)";
-                            hudPnlVal.style.color = "#94a3b8";
-                        }
-                        if (hudTradeInfo) {
-                            hudTradeInfo.innerHTML = `<span style="color: #94a3b8;">Scanning 16 SMC Strategies on XAUUSD...</span>`;
-                        }
-                        if (hudLevelsBox) {
-                            hudLevelsBox.style.display = 'none';
-                        }
                     }
-
-                    if (hudWinRate && cachedStats) {
-                        const wr = cachedStats.win_rate !== undefined ? cachedStats.win_rate : 82.4;
-                        const netR = cachedStats.net_r !== undefined ? cachedStats.net_r : 42.5;
-                        hudWinRate.innerText = `${wr}% (${netR >= 0 ? '+' : ''}${netR}R Net)`;
-                    }
-
-                    // A. Trigger Alert for Brand New Active Signal
-                    if (cachedActiveSignals.length > 0) {
-                        const topSig = cachedActiveSignals[0];
-                        if (lastSignalId !== null && topSig.id !== lastSignalId) {
-                            triggerPushNotification(
-                                `👑 GOLD ${topSig.action} SIGNAL! [${topSig.timeframe.toUpperCase()}]`,
-                                `@ ${topSig.entry_price} | TP1: ${topSig.take_profit_1} | TP2: ${topSig.take_profit_2}\nSL: ${topSig.stop_loss} ● ${topSig.strategy_name}`,
-                                topSig.id,
-                                topSig.action === 'BUY' ? 'buy' : 'sell',
-                                topSig
-                            );
-                        }
-                        lastSignalId = topSig.id;
-                    }
-
-                    // B. Trigger Alert when TP1 Hit (1:1.5 RR)
-                    cachedActiveSignals.forEach(s => {
-                        const tp1Key = s.id + '_tp1';
-                        if (s.tp1_hit && !seenAlertKeys.has(tp1Key)) {
-                            seenAlertKeys.add(tp1Key);
-                            triggerPushNotification(
-                                `🎯 FIRST TP HIT (1:1.5 RR)!`,
-                                `Gold ${s.action} trade hit TP1 @ ${s.take_profit_1}.\nMove SL to Entry! Running to TP2 (1:3.0 RR).`,
-                                tp1Key,
-                                'tp1'
-                            );
-                        }
-                    });
-
-                    // C. Trigger Alert when TP2 Hit (Win in History)
-                    if (cachedHistorySignals.length > 0) {
-                        const topHist = cachedHistorySignals[0];
-                        const winKey = topHist.id + '_closed';
-                        if (topHist.result === 'WIN' && !seenAlertKeys.has(winKey)) {
-                            seenAlertKeys.add(winKey);
-                            triggerPushNotification(
-                                `🏆 FULL WIN (+3.0R TP2 HIT)!`,
-                                `Gold trade hit TP2 @ ${topHist.closed_price} (+3.0R Net Profit)!`,
-                                winKey,
-                                'win'
-                            );
-                        }
-                    }
-                }
 
                 // 3. App Online / Mobile Link
                 if (d.info) {
