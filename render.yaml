@@ -1,10 +1,13 @@
 services:
   - type: web
     name: sk-gold-terminal
-    env: python
-    buildCommand: ""
-    startCommand: python server.py
+    runtime: python
+    buildCommand: "pip install --upgrade pip"
+    startCommand: "python -u server.py"
     plan: free
+    autoDeploy: true
     envVars:
-      - key: PORT
-        value: 5000
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: RENDER
+        value: "true"

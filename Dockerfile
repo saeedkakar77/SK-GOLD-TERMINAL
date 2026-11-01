@@ -5,8 +5,8 @@ WORKDIR /app
 COPY . /app
 
 ENV PYTHONUNBUFFERED=1
-ENV PORT=7860
+ENV RENDER=true
 
-EXPOSE 7860
+EXPOSE 5000
 
-CMD ["python", "server.py"]
+CMD ["python", "-u", "server.py"]
