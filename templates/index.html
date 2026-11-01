@@ -630,7 +630,7 @@
         <!-- Left Column: TradingView Advanced Real-Time Live Chart Widget -->
         <div class="card" style="padding: 0; overflow: hidden; border: 1.5px solid #2563eb; display: flex; flex-direction: column; background: #0f172a; box-shadow: 0 4px 30px rgba(37, 99, 235, 0.2); border-radius: 12px; min-height: 660px;">
             <!-- Chart Card Top Bar -->
-            <div style="padding: 12px 16px; background: rgba(15, 23, 42, 0.98); border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="padding: 10px 16px; background: rgba(15, 23, 42, 0.98); border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 18px;">📊</span>
                     <div>
@@ -638,8 +638,18 @@
                         <div style="font-size: 10.5px; color: #94a3b8;">Official Real-Time Gold Feed • Full Technical Tools • Multiple Timeframes</div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <button onclick="openStrategiesModal()" class="btn" style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #f59e0b; color: #fbbf24; font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 6px; cursor: pointer; box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);">
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <!-- Quick Timeframe Switchers -->
+                    <div style="display: flex; gap: 4px; background: rgba(0,0,0,0.35); padding: 3px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08);">
+                        <button class="tv-tf-btn" data-tf="1" onclick="setTvTimeframe('1')" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; cursor: pointer;">1m</button>
+                        <button class="tv-tf-btn" data-tf="5" onclick="setTvTimeframe('5')" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; cursor: pointer;">5m</button>
+                        <button class="tv-tf-btn" data-tf="15" onclick="setTvTimeframe('15')" style="background: #2563eb; color: #fff; border: 1px solid #60a5fa; border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; cursor: pointer; box-shadow: 0 0 10px rgba(37,99,235,0.5);">15m</button>
+                        <button class="tv-tf-btn" data-tf="30" onclick="setTvTimeframe('30')" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; cursor: pointer;">30m</button>
+                        <button class="tv-tf-btn" data-tf="60" onclick="setTvTimeframe('60')" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; cursor: pointer;">1h</button>
+                        <button class="tv-tf-btn" data-tf="240" onclick="setTvTimeframe('240')" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; cursor: pointer;">4h</button>
+                        <button class="tv-tf-btn" data-tf="D" onclick="setTvTimeframe('D')" style="background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 3px 7px; font-size: 10.5px; font-weight: 700; cursor: pointer;">1D</button>
+                    </div>
+                    <button onclick="openStrategiesModal()" class="btn" style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #f59e0b; color: #fbbf24; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 6px; cursor: pointer; box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);">
                         ⚙️ 16 Strategies Daba (<span id="chartActiveCount">16/16 ON</span>)
                     </button>
                 </div>
@@ -924,47 +934,103 @@
             if (modal) modal.style.display = 'none';
         }
 
-        // TradingView Pro Real-Time Chart Initializer with Full Tools
-        function initTradingView() {
-            const container = document.getElementById('tradingview_gold_chart');
-            if (!container) return;
-            if (typeof TradingView === 'undefined') {
-                setTimeout(initTradingView, 500);
-                return;
-            }
-            container.innerHTML = '';
-            try {
-                new TradingView.widget({
-                    "autosize": true,
-                    "symbol": "OANDA:XAUUSD",
-                    "interval": "15",
-                    "timezone": "Etc/UTC",
-                    "theme": "dark",
-                    "style": "1",
-                    "locale": "en",
-                    "toolbar_bg": "#0f172a",
-                    "enable_publishing": false,
-                    "hide_top_toolbar": false,
-                    "hide_legend": false,
-                    "hide_side_toolbar": false,
-                    "allow_symbol_change": true,
-                    "save_image": true,
-                    "details": true,
-                    "hotlist": false,
-                    "calendar": false,
-                    "withdateranges": true,
-                    "studies": [
-                        "STD;RSI",
-                        "STD;MACD"
-                    ],
-                    "container_id": "tradingview_gold_chart"
-                });
-            } catch (e) {
-                console.error("TradingView widget init error:", e);
-            }
+        // TradingView Pro Real-Time Chart Initializer with Full Tools & Fallback
+        let currentTvTf = '15';
+        let tvInitAttempts = 0;
+        let isTvInitialized = false;
+
+        function setTvTimeframe(tf) {
+            currentTvTf = tf;
+            document.querySelectorAll('.tv-tf-btn').forEach(btn => {
+                if (btn.dataset.tf === tf) {
+                    btn.style.background = '#2563eb';
+                    btn.style.color = '#fff';
+                    btn.style.borderColor = '#60a5fa';
+                    btn.style.boxShadow = '0 0 10px rgba(37,99,235,0.5)';
+                } else {
+                    btn.style.background = 'rgba(255,255,255,0.05)';
+                    btn.style.color = '#94a3b8';
+                    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                    btn.style.boxShadow = 'none';
+                }
+            });
+            renderTradingViewWidget();
         }
 
-        window.addEventListener('load', initTradingView);
+        function renderTradingViewWidget() {
+            const container = document.getElementById('tradingview_gold_chart');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            // 1. Try official TradingView widget library if loaded
+            if (typeof TradingView !== 'undefined' && TradingView.widget) {
+                try {
+                    new TradingView.widget({
+                        "autosize": true,
+                        "symbol": "OANDA:XAUUSD",
+                        "interval": currentTvTf,
+                        "timezone": "Etc/UTC",
+                        "theme": "dark",
+                        "style": "1",
+                        "locale": "en",
+                        "toolbar_bg": "#0f172a",
+                        "enable_publishing": false,
+                        "hide_top_toolbar": false,
+                        "hide_legend": false,
+                        "hide_side_toolbar": false,
+                        "allow_symbol_change": true,
+                        "save_image": true,
+                        "details": false,
+                        "hotlist": false,
+                        "calendar": false,
+                        "withdateranges": true,
+                        "studies": [
+                            "STD;RSI",
+                            "STD;MACD"
+                        ],
+                        "container_id": "tradingview_gold_chart"
+                    });
+                    isTvInitialized = true;
+                    return;
+                } catch (e) {
+                    console.warn("TradingView widget init error, falling back to direct embed iframe:", e);
+                }
+            }
+
+            // 2. High-speed direct TradingView iframe fallback (100% reliable on all phones and networks)
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://s.tradingview.com/widgetembed/?symbol=OANDA%3AXAUUSD&interval=${currentTvTf}&symboledit=1&saveimage=1&toolbarbg=0f172a&studies=%5B%22STD%3BRSI%22%2C%22STD%3BMACD%22%5D&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&hideideas=1&locale=en`;
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.minHeight = '600px';
+            iframe.style.border = 'none';
+            iframe.setAttribute('allowtransparency', 'true');
+            iframe.setAttribute('scrolling', 'no');
+            container.appendChild(iframe);
+            isTvInitialized = true;
+        }
+
+        function initTradingView() {
+            tvInitAttempts++;
+            if (typeof TradingView === 'undefined' && tvInitAttempts < 4) {
+                setTimeout(initTradingView, 350);
+                return;
+            }
+            renderTradingViewWidget();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTradingView);
+        } else {
+            initTradingView();
+        }
+        window.addEventListener('load', () => {
+            const container = document.getElementById('tradingview_gold_chart');
+            if (container && (!container.children || container.children.length === 0)) {
+                renderTradingViewWidget();
+            }
+        });
 
         async function fetchMarket() {
             try {
@@ -1284,36 +1350,6 @@
 
                             <div class="signal-reason">
                                 <strong>ORIGINAL SETUP:</strong> ${sig.reason}
-                            </div>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            }
-                                <div class="level-box">
-                                    <div class="level-label">ENTRY</div>
-                                    <div class="level-val val-entry">${sig.entry_price}</div>
-                                </div>
-                                <div class="level-box">
-                                    <div class="level-label">STOP LOSS</div>
-                                    <div class="level-val val-sl">${sig.stop_loss}</div>
-                                </div>
-                                <div class="level-box">
-                                    <div class="level-label">TP 1 (1:1.5R)</div>
-                                    <div class="level-val val-tp">${sig.take_profit_1}</div>
-                                </div>
-                                <div class="level-box">
-                                    <div class="level-label">TP 2 (1:3.0R)</div>
-                                    <div class="level-val val-tp">${sig.take_profit_2}</div>
-                                </div>
-                                <div class="level-box" style="background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.2);">
-                                    <div class="level-label" style="color: #94a3b8;">EXIT PRICE</div>
-                                    <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${sig.closed_price || (isWin ? sig.take_profit_2 : sig.stop_loss)}</div>
-                                </div>
-                            </div>
-
-                            <div class="signal-reason" style="font-size: 11.5px; color: #94a3b8;">
-                                <strong>STRATEGY CONFLUENCE:</strong> ${sig.reason}
                             </div>
                         </div>
                     `;
