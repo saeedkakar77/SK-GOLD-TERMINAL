@@ -1,0 +1,2 @@
+# 100% Zero-Dependency Standalone Architecture
+# Uses Python standard library (http.server, threading, json, urllib)

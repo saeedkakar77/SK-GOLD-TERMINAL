@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0b1120">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SK Gold Terminal">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
+    <title>SK Institutional Gold Terminal (V2.2) - 16 SMC Strategies</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0e17;
+            --card-bg: #111827;
+            --card-border: #1f293d;
+            --accent-green: #00e676;
+            --accent-green-glow: rgba(0, 230, 118, 0.25);
+            --accent-red: #ff1744;
+            --accent-red-glow: rgba(255, 23, 68, 0.25);
+            --accent-gold: #ffd700;
+            --accent-blue: #2979ff;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 18px 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .badge-live {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 230, 118, 0.12);
+            color: var(--accent-green);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid rgba(0, 230, 118, 0.3);
+        }
+
+        .dot-pulse {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.4; }
+            100% { transform: scale(0.9); opacity: 1; }
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            background: #1e293b;
+            color: #fff;
+            border: 1px solid var(--card-border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: #334155;
+            border-color: #475569;
+        }
+
+        .btn-test {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border: none;
+            color: #000;
+            font-weight: 700;
+        }
+
+        .btn-test:hover {
+            filter: brightness(1.15);
+        }
+
+        /* Top Bar: Selector & Ticker */
+        .market-bar {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 18px;
+        }
+
+        .selector-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        select {
+            background: #0f172a;
+            color: #fff;
+            border: 1px solid var(--card-border);
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+        }
+
+        .ticker-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 24px;
+        }
+
+        .price-big {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--accent-gold);
+        }
+
+        /* Layout Grid */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 20px;
+        }
+
+        /* Left Side: Strategy Toggles */
+        .section-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .strategy-item {
+            background: #0d131f;
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+
+        .strategy-item.active {
+            border-color: rgba(0, 230, 118, 0.4);
+        }
+
+        .strategy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .strategy-name {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .strategy-desc {
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Switch Toggle */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #374151;
+            transition: .3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-green);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+        /* Right Side: Signals Feed */
+        .signals-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .signal-card {
+            background: #0d131f;
+            border-radius: 12px;
+            padding: 18px 22px;
+            border: 2px solid;
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .signal-card.buy {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 20px var(--accent-green-glow);
+        }
+
+        .signal-card.sell {
+            border-color: var(--accent-red);
+            box-shadow: 0 0 20px var(--accent-red-glow);
+        }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .signal-badge {
+            font-size: 16px;
+            font-weight: 800;
+            padding: 6px 14px;
+            border-radius: 6px;
+            letter-spacing: 1px;
+        }
+
+        .badge-buy {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .badge-sell {
+            background: var(--accent-red);
+            color: #fff;
+        }
+
+        .signal-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .signal-levels {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            background: #111827;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid #1f2937;
+            margin-bottom: 12px;
+        }
+
+        .level-box {
+            text-align: center;
+        }
+
+        .level-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .level-val {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .val-entry { color: #fff; }
+        .val-sl { color: var(--accent-red); }
+        .val-tp { color: var(--accent-green); }
+
+        .signal-reason {
+            font-size: 13px;
+            color: #e5e7eb;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        /* Empty Feed State */
+        .empty-feed {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .radar-box {
+            width: 60px;
+            height: 60px;
+            border: 2px dashed #374151;
+            border-radius: 50%;
+            margin: 0 auto 16px auto;
+            animation: spin 6s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Mobile App Responsive Layout */
+        @media (max-width: 900px) {
+            body { padding: 8px 8px 30px 8px; }
+            header { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+            .header-actions { justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+            .market-bar { grid-template-columns: 1fr; gap: 8px; }
+            .main-layout { grid-template-columns: 1fr; gap: 14px; }
+            #biasCardsGrid { grid-template-columns: 1fr; }
+            .price-big { font-size: 24px; }
+            .signal-levels { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
+            /* Mobile Priority: Show Live Signals First on Top, Strategies below */
+            .main-layout > div:nth-child(1) { order: 2; }
+            .main-layout > div:nth-child(2) { order: 1; }
+            .btn { padding: 6px 10px; font-size: 11px; }
+        }
+
+        /* Mobile Connect Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(6px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-card {
+            background: #111827;
+            border: 2px solid #f59e0b;
+            border-radius: 14px;
+            max-width: 440px;
+            width: 100%;
+            padding: 24px;
+            box-shadow: 0 0 35px rgba(245, 158, 11, 0.35);
+            text-align: center;
+            animation: fadeIn 0.25s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo-area">
+            <div style="font-size: 26px;">👑</div>
+            <div>
+                <h1 style="font-size: 18px; font-weight: 800; letter-spacing: 0.5px;">SK INSTITUTIONAL GOLD TERMINAL (V2.2)</h1>
+                <p style="font-size: 12px; color: #fbbf24; font-weight: 700;">👑 Pure Gold (XAUUSD) Exclusive • 16 SMC Strategies Live Active 24/7</p>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <!-- Worldwide Online Live Pill -->
+            <a id="headerOnlineLink" href="#" target="_blank" onclick="openMobileModal(); return false;" style="display: none; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3)); border: 1.5px solid #10b981; color: #10b981; font-weight: 800; font-size: 11px; padding: 6px 12px; border-radius: 8px; text-decoration: none; align-items: center; gap: 6px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); cursor: pointer;">
+                <span class="dot-pulse" style="background: #10b981;"></span>
+                <span>🌍 WORLDWIDE LIVE:</span>
+                <span id="headerOnlineText" class="mono" style="color: #fff;">Connecting...</span>
+            </a>
+
+            <span class="badge-live">
+                <span class="dot-pulse"></span>
+                <span id="dataMode">SCANNING</span>
+            </span>
+            <button class="btn" onclick="openMobileModal()" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 900; border: none; box-shadow: 0 0 14px rgba(245, 158, 11, 0.45); display: inline-flex; align-items: center; gap: 6px;">
+                <span>📱</span> Mobile App
+            </button>
+            <button class="btn" id="audioToggleBtn" onclick="toggleAudio()">
+                <span id="audioIcon">🔊</span> Audio: <strong id="audioStatus">ON</strong>
+            </button>
+            <button class="btn btn-test" onclick="sendTestSignal()">
+                🔔 Test Sound
+            </button>
+        </div>
+    </header>
+
+    <!-- ============================================================== -->
+    <!-- 🏛️ TOP LEVEL: ICT INSTITUTIONAL MTF BIAS TERMINAL (V2.2)       -->
+    <!-- ============================================================== -->
+    <div class="card" style="margin-bottom: 20px; border: 1.5px solid #3b82f6; background: linear-gradient(180deg, #131c31, #0b1120); box-shadow: 0 4px 25px rgba(59, 130, 246, 0.15);">
+        <!-- Terminal Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; font-size: 11px; font-weight: 900; padding: 4px 10px; border-radius: 4px; letter-spacing: 1.5px; box-shadow: 0 0 10px rgba(37, 99, 235, 0.5);">BIAS</span>
+                <span style="font-weight: 800; font-size: 15px; letter-spacing: 0.5px; color: #f8fafc;">ICT INSTITUTIONAL ERL / IRL MTF BIAS ANALYZER (V2.2)</span>
+                <span style="font-size: 11px; background: rgba(59, 130, 246, 0.15); color: #93c5fd; padding: 2px 8px; border-radius: 12px; font-weight: 600;">MONTHLY + WEEKLY + DAILY + H4</span>
+            </div>
+            <div id="masterBiasHeader" style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 12px; color: var(--text-secondary);">Analyzing MTF Liquidity...</span>
+            </div>
+        </div>
+
+        <!-- 4-Timeframe Grid: Monthly, Weekly, Daily, H4 -->
+        <div id="biasCardsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+            <!-- Populated via fetchBias() -->
+        </div>
+
+        <!-- Scenarios & Draw On Liquidity (DOL) Footer -->
+        <div id="biasScenariosBanner" style="margin-top: 14px; padding: 12px 16px; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; font-size: 12px;">
+            <!-- Populated via fetchBias() -->
+        </div>
+    </div>
+
+    <!-- Market Overview Bar (Locked Exclusively to Gold XAUUSD) -->
+    <div class="market-bar">
+        <div class="card selector-group">
+            <div>
+                <div style="font-size: 11px; color: var(--accent-gold); font-weight: 800; margin-bottom: 4px;">👑 EXCLUSIVE ASSET (GOLD ONLY)</div>
+                <div style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #f59e0b; padding: 7px 14px; border-radius: 8px; color: #fbbf24; font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);">
+                    <span>👑 XAUUSD (Gold Spot - OANDA)</span>
+                    <span style="font-size: 10px; background: #f59e0b; color: #000; padding: 2px 6px; border-radius: 4px; font-weight: 900;">100% EXCLUSIVE</span>
+                </div>
+                <select id="symbolSelect" style="display: none;">
+                    <option value="XAUUSD" selected>XAUUSD</option>
+                </select>
+            </div>
+
+            <div>
+                <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600; margin-bottom: 4px;">TIMEFRAME</div>
+                <select id="tfSelect" onchange="changeMarket()">
+                    <option value="3m">M3 (Scalp)</option>
+                    <option value="5m" selected>M5 (Day Trade)</option>
+                    <option value="15m">M15 (Structure)</option>
+                    <option value="30m">M30 (MSNR / Intraday)</option>
+                    <option value="1h">H1 (1 Hour)</option>
+                    <option value="4h">H4 (4 Hours)</option>
+                    <option value="1d">1D (Daily)</option>
+                    <option value="1w">1W (Weekly)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="card ticker-card">
+            <div>
+                <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">LIVE GOLD SPOT PRICE (OANDA)</div>
+                <div class="price-big mono" id="livePrice">--.--</div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 12px; color: var(--text-secondary); font-weight: 600;">STATUS</div>
+                <div id="priceChange" class="mono" style="font-size: 16px; font-weight: 700; color: var(--accent-green);">
+                    ● ACTIVE FEED
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; justify-content: center; min-width: 190px;">
+            <div style="font-size: 11px; color: var(--text-secondary); font-weight: 600;">ACTIVE STRATEGIES</div>
+            <div style="font-size: 22px; font-weight: 800; color: var(--accent-green);" id="activeCount">16 / 16 (ALL ON)</div>
+        </div>
+    </div>
+
+    <!-- ⚡ 16 Strategies Live Institutional Gold Engine Banner -->
+    <div class="card" style="margin-bottom: 20px; padding: 14px 20px; border: 1.5px solid rgba(16, 185, 129, 0.4); background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(15, 23, 42, 0.95)); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 26px;">⚡</span>
+                <div>
+                    <div style="font-weight: 800; font-size: 14px; color: #f8fafc; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">
+                        <span>ALL 16 SMC STRATEGIES ACTIVE & SCANNING GOLD (XAUUSD) LIVE</span>
+                        <span style="background: rgba(16, 185, 129, 0.25); color: #10b981; border: 1px solid #10b981; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 900;">24/7 LIVE</span>
+                    </div>
+                    <div style="font-size: 11.5px; color: #94a3b8; margin-top: 3px;">
+                        Har waqat active bar-by-bar analysis across M3, M5, M15, M30, H1, H4, 1D with Institutional Volume Divergence
+                    </div>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 6px; text-align: center;">
+                    <span style="font-size: 10px; color: #94a3b8; font-weight: 700;">ASSET FILTER</span>
+                    <div style="font-size: 12px; font-weight: 800; color: #fbbf24;">XAUUSD ONLY</div>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10b981; padding: 6px 12px; border-radius: 6px; text-align: center;">
+                    <span style="font-size: 10px; color: #10b981; font-weight: 700;">STRATEGIES</span>
+                    <div style="font-size: 12px; font-weight: 800; color: #10b981;">16 / 16 ON</div>
+                </div>
+            </div>
+        </div>
+        <div id="pairTogglesContainer" style="display: none;"></div>
+        <div id="activePairsCount" style="display: none;"></div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+        <!-- Left: Strategies ON/OFF -->
+        <div class="card">
+            <div class="section-title">
+                <span>STRATEGIES</span>
+                <span style="font-size: 11px; color: var(--accent-gold);">CUSTOM SMC ENGINE</span>
+            </div>
+
+            <div id="strategyList">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- Right: Live Signals Feed & Completed Trade History -->
+        <div class="card">
+            <!-- Tabs Header: Active vs History -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 8px;">
+                    <button id="tabActiveBtn" onclick="switchSignalTab('active')" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; border: 1px solid #3b82f6; padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); transition: all 0.2s;">
+                        <span>⚡ LIVE ACTIVE SIGNALS (GOLD)</span>
+                        <span id="activeCountBadge" style="background: rgba(0,0,0,0.4); padding: 2px 7px; border-radius: 10px; font-size: 11px;">0</span>
+                    </button>
+                    <button id="tabHistoryBtn" onclick="switchSignalTab('history')" style="background: rgba(30, 41, 59, 0.5); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;">
+                        <span>📜 WIN & LOSS HISTORY</span>
+                        <span id="historyCountBadge" style="background: rgba(0,0,0,0.4); padding: 2px 7px; border-radius: 10px; font-size: 11px;">0</span>
+                    </button>
+                </div>
+                <div id="quickGoldOnlyBadge" style="font-size: 11px; font-weight: 700; color: #fbbf24; background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; padding: 4px 10px; border-radius: 6px;">
+                    👑 GOLD (XAUUSD) EXCLUSIVE
+                </div>
+            </div>
+
+            <!-- Performance Scorecard (Shown when History tab is selected) -->
+            <div id="historyScorecard" style="display: none; margin-bottom: 14px; padding: 12px 16px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; text-align: center;">
+                <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">
+                    <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">TOTAL CLOSED</div>
+                    <div id="statTotalClosed" style="font-size: 18px; font-weight: 800; color: #fff;">0</div>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 8px; border-radius: 6px;">
+                    <div style="font-size: 10px; color: #10b981; font-weight: 700;">WINS (TP2)</div>
+                    <div id="statWins" style="font-size: 18px; font-weight: 800; color: #10b981;">0</div>
+                </div>
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px; border-radius: 6px;">
+                    <div style="font-size: 10px; color: #ef4444; font-weight: 700;">LOSSES (SL)</div>
+                    <div id="statLosses" style="font-size: 18px; font-weight: 800; color: #ef4444;">0</div>
+                </div>
+                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px; border-radius: 6px;">
+                    <div style="font-size: 10px; color: #60a5fa; font-weight: 700;">WIN RATE</div>
+                    <div id="statWinRate" style="font-size: 18px; font-weight: 800; color: #60a5fa;">0%</div>
+                </div>
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 8px; border-radius: 6px;">
+                    <div style="font-size: 10px; color: #fbbf24; font-weight: 700;">NET PROFIT</div>
+                    <div id="statNetR" style="font-size: 18px; font-weight: 800; color: #fbbf24;">+0.0R</div>
+                </div>
+            </div>
+
+            <div class="signals-container" id="signalsFeed">
+                <div class="empty-feed">
+                    <div class="radar-box"></div>
+                    <div style="font-weight: 600; font-size: 16px; margin-bottom: 6px;">Scanning Live Market...</div>
+                    <p style="font-size: 13px;">Waiting for confirmation candle to trigger an Order Block, FVG, SMT, Liquidity Sweep, or EMA Retest setup.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioEnabled = true;
+        let lastSignalId = null;
+
+        // Web Audio Synthesizer (Zero-dependency sound generator)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playAlertSound(isBuy = true) {
+            if (!audioEnabled) return;
+            try {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                
+                if (isBuy) {
+                    // Ascending Chime for BUY (880Hz -> 1174Hz)
+                    osc.frequency.setValueAtTime(880, now);
+                    osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(1760.00, now + 0.35);
+                } else {
+                    // Descending Chime for SELL (1046Hz -> 659Hz)
+                    osc.frequency.setValueAtTime(1046.50, now);
+                    osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(523.25, now + 0.35);
+                }
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.55);
+            } catch (e) {
+                console.log("Audio play error:", e);
+            }
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            document.getElementById('audioStatus').innerText = audioEnabled ? 'ON' : 'OFF';
+            document.getElementById('audioIcon').innerText = audioEnabled ? '🔊' : '🔇';
+        }
+
+        async function fetchStrategies() {
+            try {
+                const res = await fetch('/api/strategies');
+                const data = await res.json();
+                const container = document.getElementById('strategyList');
+                let html = '';
+                let active = 0;
+
+                data.forEach(s => {
+                    if (s.enabled) active++;
+                    html += `
+                        <div class="strategy-item ${s.enabled ? 'active' : ''}">
+                            <div class="strategy-header">
+                                <span class="strategy-name" style="color: ${s.enabled ? '#fff' : '#94a3b8'}; font-weight: 700;">${s.name}</span>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 9px; font-weight: 800; color: #10b981; background: rgba(16, 185, 129, 0.15); padding: 2px 5px; border-radius: 4px; letter-spacing: 0.3px;">LIVE ON GOLD</span>
+                                    <label class="switch">
+                                        <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleStrategy('${s.id}', this.checked)">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="strategy-desc">${s.description}</div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+                document.getElementById('activeCount').innerText = `${active} / ${data.length} (ALL ON)`;
+            } catch (e) {
+                console.error("Strategy load error:", e);
+            }
+        }
+
+        async function toggleStrategy(strategyId, enabled) {
+            await fetch('/api/strategies/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ strategy_id: strategyId, enabled: enabled })
+            });
+            fetchStrategies();
+        }
+
+        async function fetchMarket() {
+            try {
+                const res = await fetch('/api/market');
+                const data = await res.json();
+                document.getElementById('livePrice').innerText = data.current_price;
+                document.getElementById('dataMode').innerText = data.data_mode.toUpperCase();
+            } catch (e) {
+                console.error("Market fetch error:", e);
+            }
+        }
+
+        let currentSignalsTab = 'active';
+        let cachedActiveSignals = [];
+        let cachedHistorySignals = [];
+        let cachedStats = {};
+        let lastSignalsHash = '';
+
+        function switchSignalTab(tab) {
+            currentSignalsTab = tab;
+            const activeBtn = document.getElementById('tabActiveBtn');
+            const historyBtn = document.getElementById('tabHistoryBtn');
+            const scorecard = document.getElementById('historyScorecard');
+
+            if (tab === 'active') {
+                if (activeBtn) {
+                    activeBtn.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)';
+                    activeBtn.style.color = '#fff';
+                    activeBtn.style.border = '1px solid #3b82f6';
+                    activeBtn.style.boxShadow = '0 0 15px rgba(37, 99, 235, 0.4)';
+                }
+                if (historyBtn) {
+                    historyBtn.style.background = 'rgba(30, 41, 59, 0.5)';
+                    historyBtn.style.color = '#94a3b8';
+                    historyBtn.style.border = '1px solid rgba(255,255,255,0.1)';
+                    historyBtn.style.boxShadow = 'none';
+                }
+                if (scorecard) scorecard.style.display = 'none';
+            } else {
+                if (historyBtn) {
+                    historyBtn.style.background = 'linear-gradient(135deg, #7c3aed, #6d28d9)';
+                    historyBtn.style.color = '#fff';
+                    historyBtn.style.border = '1px solid #8b5cf6';
+                    historyBtn.style.boxShadow = '0 0 15px rgba(124, 58, 237, 0.4)';
+                }
+                if (activeBtn) {
+                    activeBtn.style.background = 'rgba(30, 41, 59, 0.5)';
+                    activeBtn.style.color = '#94a3b8';
+                    activeBtn.style.border = '1px solid rgba(255,255,255,0.1)';
+                    activeBtn.style.boxShadow = 'none';
+                }
+                if (scorecard) scorecard.style.display = 'grid';
+            }
+
+            lastSignalsHash = ''; // Reset hash so it re-renders immediately
+            renderSignalsFeed();
+        }
+
+        function renderSignalsFeed() {
+            const container = document.getElementById('signalsFeed');
+            if (!container) return;
+
+            if (currentSignalsTab === 'active') {
+                if (cachedActiveSignals.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-feed">
+                            <div class="radar-box"></div>
+                            <div style="font-weight: 700; font-size: 16px; margin-bottom: 6px; color: #fbbf24;">⚡ Scanning Live Gold Market (XAUUSD)...</div>
+                            <p style="font-size: 13px; color: #94a3b8;">Waiting for institutional confirmation candle to trigger an Order Block, FVG, Unicorn, SMT, or BBMA setup on XAUUSD.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                cachedActiveSignals.forEach(sig => {
+                    const isBuy = sig.action === 'BUY';
+                    const isTpHit = (sig.status === 'TP1_HIT' || sig.tp1_hit);
+
+                    const goldBadge = `
+                        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 900; font-size: 11px; padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0.5px; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);">
+                            👑 MASTER GOLD (XAUUSD)
+                        </div>
+                    `;
+
+                    const ultraBadge = sig.is_ultra_strong ? `
+                        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 800; font-size: 11px; padding: 4px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0.5px; box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);">
+                            ⭐ A+ ULTRA STRONG (VOL DIV CONFIRMED)
+                        </div>
+                    ` : '';
+
+                    // TP1 Hit Status Banner vs Live Running Banner
+                    let statusBanner = '';
+                    if (isTpHit) {
+                        statusBanner = `
+                            <div style="margin: 10px 0; background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(245, 158, 11, 0.2)); border: 1.5px solid #10b981; padding: 10px 14px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 16px;">🎯</span>
+                                    <span style="color: #10b981; font-weight: 900; font-size: 13px; letter-spacing: 0.5px;">FIRST TP HIT (1:1.5 RR)!</span>
+                                </div>
+                                <div style="color: #fbbf24; font-weight: 800; font-size: 12px; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                    RUNNING TO TP 2 @ <span class="mono">${sig.take_profit_2}</span> (1:3.0 RR)
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        statusBanner = `
+                            <div style="margin: 10px 0; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #93c5fd; flex-wrap: wrap; gap: 6px;">
+                                <div style="display: flex; align-items: center; gap: 6px; font-weight: 700;">
+                                    <span class="dot-pulse" style="background: #3b82f6;"></span>
+                                    <span>⚡ LIVE ACTIVE TRADE</span>
+                                </div>
+                                <div class="mono" style="font-size: 11.5px; color: #cbd5e1;">${sig.live_status_note || 'Monitoring bar by bar...'}</div>
+                            </div>
+                        `;
+                    }
+
+                    const cardBorder = isTpHit 
+                        ? 'border: 2px solid #10b981; box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);'
+                        : 'border: 2px solid #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 0.25);';
+
+                    html += `
+                        <div class="signal-card ${isBuy ? 'buy' : 'sell'}" style="${cardBorder}">
+                            <div class="signal-header">
+                                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                    <span class="signal-badge ${isBuy ? 'badge-buy' : 'badge-sell'}">${sig.action}</span>
+                                    <span class="mono" style="font-weight: 800; font-size: 16px;">${sig.symbol} [${sig.timeframe.toUpperCase()}]</span>
+                                    ${goldBadge}
+                                    ${ultraBadge}
+                                </div>
+                                <div class="signal-meta mono">
+                                    <span>${sig.timestamp}</span>
+                                    <span style="color: var(--accent-gold);">● ${sig.strategy_name}</span>
+                                </div>
+                            </div>
+
+                            ${statusBanner}
+
+                            <div class="signal-levels mono">
+                                <div class="level-box">
+                                    <div class="level-label">ENTRY PRICE</div>
+                                    <div class="level-val val-entry">${sig.entry_price}</div>
+                                </div>
+                                <div class="level-box">
+                                    <div class="level-label">STOP LOSS (SL)</div>
+                                    <div class="level-val val-sl">${sig.stop_loss}</div>
+                                </div>
+                                <div class="level-box" style="${isTpHit ? 'background: rgba(16, 185, 129, 0.15); border: 1.5px solid #10b981;' : ''}">
+                                    <div class="level-label" style="${isTpHit ? 'color: #10b981; font-weight: 800;' : ''}">TP 1 (1:1.5 RR) ${isTpHit ? '✅ HIT' : ''}</div>
+                                    <div class="level-val val-tp" style="${isTpHit ? 'color: #10b981;' : ''}">${sig.take_profit_1}</div>
+                                </div>
+                                <div class="level-box">
+                                    <div class="level-label">TP 2 (1:3.0 RR)</div>
+                                    <div class="level-val val-tp">${sig.take_profit_2}</div>
+                                </div>
+                            </div>
+
+                            <div class="signal-reason">
+                                <strong>CONFIRMATION:</strong> ${sig.reason}
+                                ${sig.vol_div ? `<div style="margin-top: 6px; color: #f59e0b; font-size: 12px; font-weight: 700;">📊 Volume Flow Confluence: ${sig.vol_div}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+
+            } else {
+                // HISTORY TAB RENDERING
+                if (cachedHistorySignals.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 45px 20px; color: #94a3b8;">
+                            <div style="font-size: 36px; margin-bottom: 10px;">📜</div>
+                            <div style="font-size: 16px; font-weight: 700; color: #cbd5e1;">No Closed Trades in History Yet</div>
+                            <p style="font-size: 13px; margin-top: 6px; color: #64748b;">Completed Gold trades that hit TP 2 (+3.0R) or SL (-1.0R) will appear here automatically.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                cachedHistorySignals.forEach(sig => {
+                    const isWin = (sig.result === 'WIN' || sig.tp2_hit);
+                    const outcomeColor = isWin ? '#10b981' : '#ef4444';
+                    const outcomeBg = isWin ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)';
+                    const outcomeBorder = isWin ? '#10b981' : '#ef4444';
+                    const outcomeTitle = isWin ? '🟢 FULL WIN (TP 2 HIT: +3.0R)' : '🔴 LOSS (SL HIT: -1.0R)';
+                    const cardBorder = isWin 
+                        ? 'border: 1.5px solid #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);' 
+                        : 'border: 1.5px solid #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);';
+
+                    html += `
+                        <div class="signal-card" style="${cardBorder}; background: rgba(15, 23, 42, 0.85);">
+                            <div class="signal-header">
+                                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                    <span style="background: ${outcomeBg}; border: 1.5px solid ${outcomeBorder}; color: ${outcomeColor}; font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 6px; letter-spacing: 0.5px;">
+                                        ${outcomeTitle}
+                                    </span>
+                                    <span class="mono" style="font-weight: 800; font-size: 15px;">${sig.action} ${sig.symbol} [${sig.timeframe.toUpperCase()}]</span>
+                                </div>
+                                <div class="signal-meta mono" style="font-size: 11px;">
+                                    <span>Closed: ${sig.closed_at || sig.timestamp}</span>
+                                    <span style="color: var(--accent-gold);">● ${sig.strategy_name}</span>
+                                </div>
+                            </div>
+
+                            <div style="margin: 8px 0; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06); padding: 8px 12px; border-radius: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                                <div style="color: #cbd5e1;">${sig.live_status_note || (isWin ? 'Take Profit 2 achieved' : 'Stop loss triggered')}</div>
+                                <div class="mono" style="font-weight: 800; color: ${outcomeColor};">
+                                    Result: ${sig.result || (isWin ? 'WIN' : 'LOSS')} (${sig.pnl_r >= 0 ? '+' : ''}${sig.pnl_r || (isWin ? 3.0 : -1.0)}R)
+                                </div>
+                            </div>
+
+                            <div class="signal-levels mono">
+                                <div class="level-box">
+                                    <div class="level-label">ENTRY</div>
+                                    <div class="level-val val-entry">${sig.entry_price}</div>
+                                </div>
+                                <div class="level-box">
+                                    <div class="level-label">STOP LOSS</div>
+                                    <div class="level-val val-sl">${sig.stop_loss}</div>
+                                </div>
+                                <div class="level-box">
+                                    <div class="level-label">TP 1 (1:1.5R)</div>
+                                    <div class="level-val val-tp">${sig.take_profit_1}</div>
+                                </div>
+                                <div class="level-box">
+                                    <div class="level-label">TP 2 (1:3.0R)</div>
+                                    <div class="level-val val-tp">${sig.take_profit_2}</div>
+                                </div>
+                                <div class="level-box" style="background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.2);">
+                                    <div class="level-label" style="color: #94a3b8;">EXIT PRICE</div>
+                                    <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${sig.closed_price || (isWin ? sig.take_profit_2 : sig.stop_loss)}</div>
+                                </div>
+                            </div>
+
+                            <div class="signal-reason" style="font-size: 11.5px; color: #94a3b8;">
+                                <strong>STRATEGY CONFLUENCE:</strong> ${sig.reason}
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+        }
+
+        async function fetchSignals() {
+            try {
+                const res = await fetch('/api/signals');
+                const data = await res.json();
+                if (!data) return;
+
+                cachedActiveSignals = data.active || [];
+                cachedHistorySignals = data.history || [];
+                cachedStats = data.stats || {};
+
+                // Update tab counters
+                const activeBadge = document.getElementById('activeCountBadge');
+                if (activeBadge) activeBadge.innerText = cachedActiveSignals.length;
+
+                const historyBadge = document.getElementById('historyCountBadge');
+                if (historyBadge) historyBadge.innerText = cachedHistorySignals.length;
+
+                // Update performance scorecard
+                if (data.stats) {
+                    const elTotal = document.getElementById('statTotalClosed');
+                    if (elTotal) elTotal.innerText = data.stats.total_closed || 0;
+
+                    const elWins = document.getElementById('statWins');
+                    if (elWins) elWins.innerText = data.stats.wins || 0;
+
+                    const elLosses = document.getElementById('statLosses');
+                    if (elLosses) elLosses.innerText = data.stats.losses || 0;
+
+                    const elWinRate = document.getElementById('statWinRate');
+                    if (elWinRate) elWinRate.innerText = `${data.stats.win_rate || 0}%`;
+
+                    const elNetR = document.getElementById('statNetR');
+                    if (elNetR) {
+                        const netR = data.stats.net_r || 0;
+                        elNetR.innerText = (netR >= 0 ? `+${netR}R` : `${netR}R`);
+                        elNetR.style.color = (netR >= 0) ? '#10b981' : '#ef4444';
+                    }
+                }
+
+                // Sound alarm for brand new active signal
+                if (cachedActiveSignals.length > 0 && cachedActiveSignals[0].id !== lastSignalId) {
+                    if (lastSignalId !== null) {
+                        playAlertSound(cachedActiveSignals[0].action === 'BUY');
+                    }
+                    lastSignalId = cachedActiveSignals[0].id;
+                }
+
+                // Anti-flicker hash checking
+                const currentList = (currentSignalsTab === 'active') ? cachedActiveSignals : cachedHistorySignals;
+                const currentHash = currentSignalsTab + ';' + currentList.map(s => s.id + (s.status||'') + (s.live_status_note||'') + (s.tp1_hit ? '1':'0') + (s.tp2_hit ? '2':'0')).join(';');
+
+                if (currentHash === lastSignalsHash) {
+                    return; // No change: do not touch DOM, zero blinking!
+                }
+                lastSignalsHash = currentHash;
+
+                renderSignalsFeed();
+
+            } catch (e) {
+                console.error("Signal fetch error:", e);
+            }
+        }
+
+        async function sendTestSignal() {
+            playAlertSound(true);
+            await fetch('/api/test-signal', { method: 'POST' });
+            fetchSignals();
+        }
+
+        async function changeMarket() {
+            const symbol = document.getElementById('symbolSelect').value;
+            const tf = document.getElementById('tfSelect').value;
+            await fetch('/api/market/select', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ symbol: symbol, timeframe: tf })
+            });
+            fetchMarket();
+            fetchBias();
+        }
+
+        window.expandedTFs = window.expandedTFs || { monthly: false, weekly: false, daily: false, h4: false };
+
+        function toggleBiasCard(key) {
+            window.expandedTFs[key] = !window.expandedTFs[key];
+            fetchBias();
+        }
+
+        function toggleAllBiasCards() {
+            const anyOpen = Object.values(window.expandedTFs).some(v => v);
+            const newState = !anyOpen;
+            window.expandedTFs = { monthly: newState, weekly: newState, daily: newState, h4: newState };
+            fetchBias();
+        }
+
+        async function fetchBias() {
+            try {
+                const res = await fetch('/api/bias');
+                const data = await res.json();
+                if (!data || !data.timeframes) return;
+
+                // 1. Master Bias Header
+                const isBull = data.overall_bias.includes("BULLISH");
+                const isBear = data.overall_bias.includes("BEARISH");
+                const biasColor = isBull ? '#10b981' : (isBear ? '#ef4444' : '#f59e0b');
+                const biasBg = isBull ? 'rgba(16, 185, 129, 0.2)' : (isBear ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)');
+
+                document.getElementById('masterBiasHeader').innerHTML = `
+                    <div style="background: ${biasBg}; border: 1.5px solid ${biasColor}; color: ${biasColor}; font-weight: 900; font-size: 13px; padding: 5px 14px; border-radius: 6px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 15px ${biasBg};">
+                        <span>⚡ MASTER BIAS: ${data.overall_bias}</span>
+                        <span style="font-size: 11px; opacity: 0.9;">(${data.confidence}% Conf)</span>
+                    </div>
+                    <div style="font-size: 12px; font-weight: 700; color: var(--accent-gold); background: #1e293b; padding: 5px 12px; border-radius: 6px;">
+                        🎯 DOL: <span class="mono">${data.primary_dol}</span>
+                    </div>
+                    <button onclick="toggleAllBiasCards()" style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #93c5fd; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                        ↕ Expand / Collapse All
+                    </button>
+                `;
+
+                // 2. 4 Timeframes Cards (Monthly, Weekly, Daily, H4)
+                const tfs = [
+                    { key: "monthly", title: "1. MONTHLY (Macro Bias)", prevLabel: "PMH / PML", icon: "🟣" },
+                    { key: "weekly",  title: "2. WEEKLY (Institutional)", prevLabel: "PWH / PWL", icon: "🔵" },
+                    { key: "daily",   title: "3. DAILY (Liquidity Objective)", prevLabel: "PDH / PDL", icon: "🟢" },
+                    { key: "h4",      title: "4. H4 (Directional Conf)", prevLabel: "H4 Swings", icon: "🟡" }
+                ];
+
+                let cardsHtml = '';
+                tfs.forEach(t => {
+                    const tfData = data.timeframes[t.key];
+                    if (!tfData) return;
+                    const tfBull = tfData.bias.includes("BULLISH");
+                    const tfBear = tfData.bias.includes("BEARISH");
+                    const tfBadgeColor = tfBull ? '#10b981' : (tfBear ? '#ef4444' : '#f59e0b');
+                    const tfBadgeBg = tfBull ? 'rgba(16, 185, 129, 0.2)' : (tfBear ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)');
+                    const cardBorder = tfBull ? 'border: 1.5px solid #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);' : (tfBear ? 'border: 1.5px solid #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);' : 'border: 1.5px solid rgba(255,255,255,0.1);');
+                    const zoneColor = tfData.zone.includes("DISCOUNT") ? '#10b981' : '#f59e0b';
+                    const isExpanded = !!window.expandedTFs[t.key];
+
+                    cardsHtml += `
+                        <div style="background: rgba(15, 23, 42, 0.85); ${cardBorder} border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-size: 12px; font-weight: 700; color: #cbd5e1;">${t.icon} ${t.title}</span>
+                                <span style="font-size: 11px; font-weight: 900; color: ${tfBadgeColor}; background: ${tfBadgeBg}; padding: 3px 10px; border-radius: 5px; border: 1.5px solid ${tfBadgeColor}; letter-spacing: 0.5px;">${tfData.bias}</span>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+                                <span style="color: ${zoneColor}; font-weight: 700;">📍 ${tfData.zone} (${tfData.pct_in_range ? tfData.pct_in_range.toFixed(0) : 50}%)</span>
+                                <span style="color: #93c5fd; font-weight: 700;">🎯 DOL: <span class="mono" style="color: #fff;">${tfData.dol.toFixed(2)}</span> (${tfData.dol_type})</span>
+                            </div>
+
+                            <!-- Click to Expand Toggle Button -->
+                            <div onclick="toggleBiasCard('${t.key}')" style="cursor: pointer; background: rgba(255,255,255,0.04); hover: rgba(255,255,255,0.08); padding: 5px 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; border: 1px dashed rgba(255,255,255,0.15); margin-top: 2px;">
+                                <span style="font-size: 11px; font-weight: 700; color: #60a5fa;">${isExpanded ? '▲ Hide Full SMC Details' : '▼ Click for Full SMC Details'}</span>
+                                <span style="font-size: 10px; color: #94a3b8;">${t.prevLabel} • ERL • IRL</span>
+                            </div>
+
+                            <!-- Expandable Details Drawer -->
+                            <div style="display: ${isExpanded ? 'flex' : 'none'}; flex-direction: column; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); animation: fadeIn 0.2s;">
+                                <div class="mono" style="font-size: 11px; color: var(--text-secondary); background: #0b1120; padding: 6px 8px; border-radius: 6px; display: flex; flex-direction: column; gap: 4px;">
+                                    <div><strong style="color: #94a3b8;">Dealing Range:</strong> ${tfData.dealing_range_high.toFixed(2)} - ${tfData.dealing_range_low.toFixed(2)} (Eq: ${tfData.equilibrium.toFixed(2)})</div>
+                                    <div><strong style="color: #94a3b8;">${t.prevLabel}:</strong> ${tfData.prev_high.toFixed(2)} / ${tfData.prev_low.toFixed(2)}</div>
+                                    <div><strong style="color: #94a3b8;">ERL (BSL/SSL):</strong> ${tfData.erl_bsl.toFixed(2)} / ${tfData.erl_ssl.toFixed(2)}</div>
+                                    <div><strong style="color: #94a3b8;">IRL (FVG/OB):</strong> <span style="color: #e2e8f0;">${tfData.irl}</span></div>
+                                </div>
+                                <div style="font-size: 10.5px; color: #cbd5e1; line-height: 1.35; background: rgba(0,0,0,0.25); padding: 5px 8px; border-radius: 4px;">
+                                    💬 <em>${tfData.narrative}</em>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                document.getElementById('biasCardsGrid').innerHTML = cardsHtml;
+
+                // 3. Scenarios Footer
+                document.getElementById('biasScenariosBanner').innerHTML = `
+                    <div style="display: flex; gap: 20px; align-items: center; width: 100%; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 280px; border-left: 3px solid #10b981; padding-left: 10px;">
+                            <strong style="color: #10b981;">🟢 BULLISH SCENARIO:</strong>
+                            <div style="color: #cbd5e1; font-size: 11px; margin-top: 2px;">${data.scenarios.bullish.condition} ➔ Entry: ${data.scenarios.bullish.entry_zone}</div>
+                            <div style="color: #94a3b8; font-size: 10px; margin-top: 2px;">Targets: ${data.scenarios.bullish.tp1} | ${data.scenarios.bullish.tp2} | Invalidation: ${data.scenarios.bullish.invalidation}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 280px; border-left: 3px solid #ef4444; padding-left: 10px;">
+                            <strong style="color: #ef4444;">🔴 BEARISH SCENARIO:</strong>
+                            <div style="color: #cbd5e1; font-size: 11px; margin-top: 2px;">${data.scenarios.bearish.condition} ➔ Entry: ${data.scenarios.bearish.entry_zone}</div>
+                            <div style="color: #94a3b8; font-size: 10px; margin-top: 2px;">Targets: ${data.scenarios.bearish.tp1} | ${data.scenarios.bearish.tp2} | Invalidation: ${data.scenarios.bearish.invalidation}</div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (e) {
+                console.error("Bias fetch error:", e);
+            }
+        }
+
+        async function fetchPairs() {
+            try {
+                const res = await fetch('/api/pairs');
+                const pairs = await res.json();
+                const container = document.getElementById('pairTogglesContainer');
+                if (!container || !pairs) return;
+
+        // Mobile App Connect & Modal Functions
+        let mobileNetworkUrl = window.location.origin;
+
+        async function fetchAppInfo() {
+            try {
+                const res = await fetch('/api/info');
+                const info = await res.json();
+                if (info) {
+                    const bestUrl = info.online_url || info.mobile_url || window.location.origin;
+                    mobileNetworkUrl = bestUrl;
+
+                    const urlEl = document.getElementById('modalMobileUrl');
+                    if (urlEl) urlEl.innerText = bestUrl;
+
+                    const qrEl = document.getElementById('qrCodeImg');
+                    if (qrEl) qrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(bestUrl)}`;
+
+                    const statusBadge = document.getElementById('onlineStatusBadge');
+                    if (statusBadge) {
+                        if (info.online_url) {
+                            statusBadge.innerHTML = `<span style="color: #10b981; font-weight: 800;">🌍 WORLDWIDE ONLINE ACTIVE (4G/5G/Anywhere)</span>`;
+                            const onlineBadge = document.getElementById('headerOnlineLink');
+                            const onlineText = document.getElementById('headerOnlineText');
+                            if (onlineBadge && onlineText) {
+                                onlineBadge.style.display = 'inline-flex';
+                                onlineBadge.href = info.online_url;
+                                onlineText.innerText = info.online_url.replace('https://', '');
+                            }
+                        } else {
+                            statusBadge.innerHTML = `<span style="color: #60a5fa; font-weight: 700;">🏠 LOCAL WI-FI / HOTSPOT MODE</span>`;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log("App info fetch:", e);
+            }
+        }
+
+        function openMobileModal() {
+            fetchAppInfo();
+            const modal = document.getElementById('mobileModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeMobileModal(e) {
+            const modal = document.getElementById('mobileModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function copyMobileUrl() {
+            navigator.clipboard.writeText(mobileNetworkUrl).then(() => {
+                alert("Mobile Link Copied!\n\nLink: " + mobileNetworkUrl + "\n\nIse apne mobile browser (Chrome/Safari) mein paste karein ya WhatsApp par bhejein.");
+            });
+        }
+
+        // Register Service Worker for Native PWA App install
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW reg fail:', err));
+            });
+        }
+
+        // Initialize and polling loop (100% Gold Exclusive)
+        fetchStrategies();
+        fetchMarket();
+        fetchSignals();
+        fetchBias();
+        fetchAppInfo();
+
+        setInterval(fetchMarket, 2000);
+        setInterval(fetchSignals, 2000);
+        setInterval(fetchBias, 4000);
+        setInterval(fetchAppInfo, 5000);
+    </script>
+
+    <!-- Mobile Connect Modal -->
+    <div id="mobileModal" class="modal-overlay" onclick="closeMobileModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div style="font-size: 38px; margin-bottom: 6px;">📱👑</div>
+            <h2 style="font-size: 19px; font-weight: 800; color: #fff; margin-bottom: 4px;">SK GOLD MOBILE APP</h2>
+            <div id="onlineStatusBadge" style="font-size: 11px; margin-bottom: 14px;">
+                <span style="color: #10b981; font-weight: 800;">🌍 WORLDWIDE ONLINE READY</span>
+            </div>
+
+            <div style="background: #fff; padding: 12px; border-radius: 12px; display: inline-block; margin-bottom: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                <img id="qrCodeImg" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=http://127.0.0.1:5000" alt="Mobile QR Code" style="width: 160px; height: 160px; display: block;">
+            </div>
+
+            <div style="background: rgba(0,0,0,0.4); border: 1.5px dashed rgba(245, 158, 11, 0.5); padding: 10px 14px; border-radius: 8px; margin-bottom: 14px;">
+                <div style="font-size: 10px; color: #94a3b8; font-weight: 700; margin-bottom: 2px;">MOBILE PHONE URL:</div>
+                <div id="modalMobileUrl" class="mono" style="font-size: 13.5px; font-weight: 800; color: #fbbf24; word-break: break-all;">Loading URL...</div>
+            </div>
+
+            <div style="text-align: left; font-size: 11.5px; color: #cbd5e1; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.08); padding: 12px 14px; border-radius: 8px; margin-bottom: 16px; line-height: 1.5;">
+                <div style="font-weight: 800; color: #10b981; margin-bottom: 5px;">📲 Mobile Par Chalane Ka Tareeqa:</div>
+                <div>1. Apne phone camera se ye QR code scan karein ya link apne phone ke Chrome / Safari mein open karein (4G/5G/Wi-Fi par).</div>
+                <div>2. Browser menu khol kar <strong>"Add to Home Screen"</strong> ya <strong>"Install App"</strong> select karein.</div>
+                <div>3. Aap ke mobile par <strong>SK Gold</strong> app ban jayegi jo bina URL bar ke full-screen chalegi aur signals par audio alerts de gi!</div>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+                <button onclick="copyMobileUrl()" style="flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                    📋 Copy Link
+                </button>
+                <button onclick="closeMobileModal()" style="flex: 1; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: #fff; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 800; cursor: pointer;">
+                    ✕ Close
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

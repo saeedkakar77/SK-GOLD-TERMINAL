@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: sk-gold-terminal
+    env: python
+    buildCommand: ""
+    startCommand: python server.py
+    plan: free
+    envVars:
+      - key: PORT
+        value: 5000
