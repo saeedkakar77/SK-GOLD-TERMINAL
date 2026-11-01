@@ -11,6 +11,8 @@
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👑</text></svg>">
     <title>SK Institutional Gold Terminal (V2.2) - 16 SMC Strategies</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- TradingView Advanced Real-Time Chart Library -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
         :root {
             --bg-dark: #0a0e17;
@@ -176,10 +178,10 @@
             color: var(--accent-gold);
         }
 
-        /* Layout Grid */
+        /* Layout Grid: Pro Live Chart (Left) + Signals Feed (Right) */
         .main-layout {
             display: grid;
-            grid-template-columns: 340px 1fr;
+            grid-template-columns: 1.25fr 1fr;
             gap: 20px;
         }
 
@@ -404,9 +406,13 @@
             #biasCardsGrid { grid-template-columns: 1fr; }
             .price-big { font-size: 24px; }
             .signal-levels { grid-template-columns: repeat(2, 1fr) !important; gap: 6px !important; }
-            /* Mobile Priority: Show Live Signals First on Top, Strategies below */
+            /* Mobile Priority: Show Live Signals First on Top, Chart below */
             .main-layout > div:nth-child(1) { order: 2; }
             .main-layout > div:nth-child(2) { order: 1; }
+            .tradingview-widget-container, #tradingview_gold_chart {
+                min-height: 480px !important;
+                height: 480px !important;
+            }
             .btn { padding: 6px 10px; font-size: 11px; }
         }
 
@@ -433,9 +439,44 @@
             text-align: center;
             animation: fadeIn 0.25s ease;
         }
+        /* TradeNuro-Style Sliding Notification Banner */
+        .tradenuro-alert-banner {
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 480px;
+            background: linear-gradient(135deg, #1e293b, #0b1120);
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 12px 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 25px rgba(245, 158, 11, 0.4);
+            z-index: 999999;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideDown {
+            from { transform: translate(-50%, -80px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
     </style>
 </head>
 <body>
+
+    <!-- TradeNuro In-App Alert Banner -->
+    <div id="tradeNuroAlertBanner" class="tradenuro-alert-banner" style="display: none;" onclick="dismissAlertBanner()">
+        <div style="font-size: 28px;" id="alertBannerIcon">👑</div>
+        <div style="flex: 1; min-width: 0;">
+            <div id="alertBannerTitle" style="font-weight: 800; font-size: 13.5px; color: #fbbf24; margin-bottom: 2px;">NEW GOLD SIGNAL</div>
+            <div id="alertBannerBody" class="mono" style="font-size: 11.5px; color: #cbd5e1; line-height: 1.35; white-space: pre-line;">Monitoring market...</div>
+        </div>
+        <button onclick="event.stopPropagation(); dismissAlertBanner()" style="background: transparent; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 4px;">✕</button>
+    </div>
 
     <!-- Header -->
     <header>
@@ -462,11 +503,14 @@
             <button class="btn" onclick="openMobileModal()" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 900; border: none; box-shadow: 0 0 14px rgba(245, 158, 11, 0.45); display: inline-flex; align-items: center; gap: 6px;">
                 <span>📱</span> Mobile App
             </button>
+            <button class="btn" onclick="openStrategiesModal()" style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #f59e0b; color: #fbbf24; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);">
+                <span>⚙️</span> 16 Strategies (<span id="btnActiveCount">16/16 ON</span>)
+            </button>
             <button class="btn" id="audioToggleBtn" onclick="toggleAudio()">
                 <span id="audioIcon">🔊</span> Audio: <strong id="audioStatus">ON</strong>
             </button>
-            <button class="btn btn-test" onclick="sendTestSignal()">
-                🔔 Test Sound
+            <button class="btn btn-test" onclick="sendTestSignal()" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 800; border: none; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);">
+                🔔 Test Alert (Push & Sound)
             </button>
         </div>
     </header>
@@ -576,17 +620,29 @@
         <div id="activePairsCount" style="display: none;"></div>
     </div>
 
-    <!-- Main Layout -->
+    <!-- Main Layout: TradingView Live Chart (Left) + Signals Feed (Right) -->
     <div class="main-layout">
-        <!-- Left: Strategies ON/OFF -->
-        <div class="card">
-            <div class="section-title">
-                <span>STRATEGIES</span>
-                <span style="font-size: 11px; color: var(--accent-gold);">CUSTOM SMC ENGINE</span>
+        <!-- Left Column: TradingView Advanced Real-Time Live Chart Widget -->
+        <div class="card" style="padding: 0; overflow: hidden; border: 1.5px solid #2563eb; display: flex; flex-direction: column; background: #0f172a; box-shadow: 0 4px 30px rgba(37, 99, 235, 0.2); border-radius: 12px; min-height: 660px;">
+            <!-- Chart Card Top Bar -->
+            <div style="padding: 12px 16px; background: rgba(15, 23, 42, 0.98); border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 18px;">📊</span>
+                    <div>
+                        <div style="font-weight: 800; font-size: 13.5px; color: #fff; letter-spacing: 0.5px;">TRADINGVIEW PRO LIVE CHART (XAUUSD)</div>
+                        <div style="font-size: 10.5px; color: #94a3b8;">Official Real-Time Gold Feed • Full Technical Tools • Multiple Timeframes</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button onclick="openStrategiesModal()" class="btn" style="background: rgba(245, 158, 11, 0.15); border: 1.5px solid #f59e0b; color: #fbbf24; font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 6px; cursor: pointer; box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);">
+                        ⚙️ 16 Strategies Daba (<span id="chartActiveCount">16/16 ON</span>)
+                    </button>
+                </div>
             </div>
 
-            <div id="strategyList">
-                <!-- Injected via JS -->
+            <!-- TradingView Chart Container with complete options -->
+            <div class="tradingview-widget-container" style="flex: 1; height: 100%; min-height: 600px; width: 100%; position: relative;">
+                <div id="tradingview_gold_chart" style="height: 100%; width: 100%; min-height: 600px;"></div>
             </div>
         </div>
 
@@ -646,45 +702,112 @@
     <script>
         let audioEnabled = true;
         let lastSignalId = null;
+        let seenAlertKeys = new Set();
+        let bannerTimeout = null;
 
-        // Web Audio Synthesizer (Zero-dependency sound generator)
+        // TradeNuro Web Audio Synthesizer
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function playAlertSound(isBuy = true) {
+        function dismissAlertBanner() {
+            const el = document.getElementById('tradeNuroAlertBanner');
+            if (el) el.style.display = 'none';
+            if (bannerTimeout) clearTimeout(bannerTimeout);
+        }
+
+        function showInAppAlert(title, body, icon = '👑', border = '#f59e0b') {
+            const el = document.getElementById('tradeNuroAlertBanner');
+            const titleEl = document.getElementById('alertBannerTitle');
+            const bodyEl = document.getElementById('alertBannerBody');
+            const iconEl = document.getElementById('alertBannerIcon');
+            if (!el || !titleEl || !bodyEl) return;
+
+            titleEl.innerText = title;
+            bodyEl.innerText = body;
+            if (iconEl) iconEl.innerText = icon;
+            el.style.borderColor = border;
+            el.style.display = 'flex';
+
+            if (bannerTimeout) clearTimeout(bannerTimeout);
+            bannerTimeout = setTimeout(() => {
+                el.style.display = 'none';
+            }, 7000);
+        }
+
+        // Multi-Tone Harmonized TradeNuro Chime Synthesizer
+        function playAlertSound(type = 'buy') {
             if (!audioEnabled) return;
             try {
                 if (audioCtx.state === 'suspended') {
                     audioCtx.resume();
                 }
-
                 const now = audioCtx.currentTime;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                osc.type = 'triangle';
                 
-                if (isBuy) {
-                    // Ascending Chime for BUY (880Hz -> 1174Hz)
-                    osc.frequency.setValueAtTime(880, now);
-                    osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.15);
-                    osc.frequency.exponentialRampToValueAtTime(1760.00, now + 0.35);
-                } else {
-                    // Descending Chime for SELL (1046Hz -> 659Hz)
-                    osc.frequency.setValueAtTime(1046.50, now);
-                    osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.15);
-                    osc.frequency.exponentialRampToValueAtTime(523.25, now + 0.35);
+                // Crisp institutional harmonic frequencies
+                let freqs = [587.33, 739.99, 880.0, 1174.66]; // D5-F#5-A5-D6 (Ascending Buy Chime)
+                if (type === 'sell' || type === false) {
+                    freqs = [1046.50, 880.0, 659.25, 523.25]; // C6-A5-E5-C5 (Descending Sell Chime)
+                } else if (type === 'tp1' || type === 'tp2' || type === 'win') {
+                    freqs = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // Major Victory Fanfare
                 }
 
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                freqs.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
 
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
+                    gain.gain.setValueAtTime(0.001, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.35, now + idx * 0.08 + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.35);
 
-                osc.start(now);
-                osc.stop(now + 0.55);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.4);
+                });
+
+                // Trigger mobile hardware vibration (pattern: buzz, pause, buzz)
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([250, 100, 250, 100, 350]);
+                }
             } catch (e) {
-                console.log("Audio play error:", e);
+                console.log("Audio alert error:", e);
+            }
+        }
+
+        function triggerPushNotification(title, body, tag = 'gold-signal', type = 'buy') {
+            // 1. Play TradeNuro Sound Chime
+            playAlertSound(type);
+
+            // 2. Show In-App Sliding Banner
+            const icon = (type === 'buy') ? '🟢' : (type === 'sell') ? '🔴' : '🎯';
+            const border = (type === 'buy') ? '#10b981' : (type === 'sell') ? '#ef4444' : '#f59e0b';
+            showInAppAlert(title, body, icon, border);
+
+            // 3. Trigger Native Mobile Notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.ready.then(reg => {
+                            reg.showNotification(title, {
+                                body: body,
+                                icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">👑</text></svg>',
+                                badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">👑</text></svg>',
+                                vibrate: [300, 150, 300, 150, 450],
+                                tag: tag,
+                                renotify: true
+                            });
+                        });
+                    } else {
+                        new Notification(title, {
+                            body: body,
+                            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">👑</text></svg>'
+                        });
+                    }
+                } catch (e) {
+                    console.log("Native notification error:", e);
+                }
             }
         }
 
@@ -692,6 +815,9 @@
             audioEnabled = !audioEnabled;
             document.getElementById('audioStatus').innerText = audioEnabled ? 'ON' : 'OFF';
             document.getElementById('audioIcon').innerText = audioEnabled ? '🔊' : '🔇';
+            if (audioEnabled) {
+                playAlertSound('buy');
+            }
         }
 
         async function fetchStrategies() {
@@ -721,8 +847,21 @@
                     `;
                 });
 
-                container.innerHTML = html;
-                document.getElementById('activeCount').innerText = `${active} / ${data.length} (ALL ON)`;
+                if (container) container.innerHTML = html;
+                const countText = `${active} / ${data.length} ON`;
+                const countTextFull = `${active} / ${data.length} (${active === data.length ? 'ALL ON' : 'ACTIVE'})`;
+
+                const activeEl = document.getElementById('activeCount');
+                if (activeEl) activeEl.innerText = countTextFull;
+
+                const btnEl = document.getElementById('btnActiveCount');
+                if (btnEl) btnEl.innerText = countText;
+
+                const chartBtnEl = document.getElementById('chartActiveCount');
+                if (chartBtnEl) chartBtnEl.innerText = countText;
+
+                const modalCountEl = document.getElementById('modalActiveCount');
+                if (modalCountEl) modalCountEl.innerText = `${active} / ${data.length} (ACTIVE)`;
             } catch (e) {
                 console.error("Strategy load error:", e);
             }
@@ -736,6 +875,68 @@
             });
             fetchStrategies();
         }
+
+        async function toggleAllStrategies(enabled) {
+            await fetch('/api/strategies/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ strategy_id: 'all', enabled: enabled })
+            });
+            fetchStrategies();
+        }
+
+        function openStrategiesModal() {
+            fetchStrategies();
+            const modal = document.getElementById('strategiesModal');
+            if (modal) modal.style.display = 'flex';
+        }
+
+        function closeStrategiesModal(e) {
+            const modal = document.getElementById('strategiesModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // TradingView Pro Real-Time Chart Initializer with Full Tools
+        function initTradingView() {
+            const container = document.getElementById('tradingview_gold_chart');
+            if (!container) return;
+            if (typeof TradingView === 'undefined') {
+                setTimeout(initTradingView, 500);
+                return;
+            }
+            container.innerHTML = '';
+            try {
+                new TradingView.widget({
+                    "autosize": true,
+                    "symbol": "OANDA:XAUUSD",
+                    "interval": "15",
+                    "timezone": "Etc/UTC",
+                    "theme": "dark",
+                    "style": "1",
+                    "locale": "en",
+                    "toolbar_bg": "#0f172a",
+                    "enable_publishing": false,
+                    "hide_top_toolbar": false,
+                    "hide_legend": false,
+                    "hide_side_toolbar": false,
+                    "allow_symbol_change": true,
+                    "save_image": true,
+                    "details": true,
+                    "hotlist": false,
+                    "calendar": false,
+                    "withdateranges": true,
+                    "studies": [
+                        "STD;RSI",
+                        "STD;MACD"
+                    ],
+                    "container_id": "tradingview_gold_chart"
+                });
+            } catch (e) {
+                console.error("TradingView widget init error:", e);
+            }
+        }
+
+        window.addEventListener('load', initTradingView);
 
         async function fetchMarket() {
             try {
@@ -1045,9 +1246,27 @@
         }
 
         async function sendTestSignal() {
-            playAlertSound(true);
+            // Unlock audio on click
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            // Ask notification permission if needed
+            if ('Notification' in window && Notification.permission === 'default') {
+                try {
+                    await Notification.requestPermission();
+                } catch (e) {}
+            }
+
+            triggerPushNotification(
+                "👑 TRADENURO ALERT: GOLD (XAUUSD) BUY [15M]",
+                "Unicorn Setup: Breaker Block + iFVG Rejection @ 3875.64\nTarget 1: 3885.00 (1:1.5 RR) | Target 2: 3895.00 (1:3.0 RR)\nStop Loss: 3865.20",
+                "test-alert-" + Date.now(),
+                "buy"
+            );
+
             await fetch('/api/test-signal', { method: 'POST' });
-            fetchSignals();
+            fastPoll();
         }
 
         async function changeMarket() {
@@ -1177,13 +1396,6 @@
             }
         }
 
-        async function fetchPairs() {
-            try {
-                const res = await fetch('/api/pairs');
-                const pairs = await res.json();
-                const container = document.getElementById('pairTogglesContainer');
-                if (!container || !pairs) return;
-
         // Mobile App Connect & Modal Functions
         let mobileNetworkUrl = window.location.origin;
 
@@ -1246,18 +1458,140 @@
             });
         }
 
-        // Initialize and polling loop (100% Gold Exclusive)
-        fetchStrategies();
-        fetchMarket();
-        fetchSignals();
-        fetchBias();
-        fetchAppInfo();
+        // High-Speed Unified Poller (Zero Latency, Single Lightweight Network Call)
+        async function fastPoll() {
+            try {
+                const res = await fetch('/api/poll');
+                if (!res.ok) return;
+                const d = await res.json();
+                
+                // 1. Live Market Bar
+                if (d.market) {
+                    const priceEl = document.getElementById('livePrice');
+                    const modeEl = document.getElementById('dataMode');
+                    if (priceEl && d.market.current_price) priceEl.innerText = d.market.current_price;
+                    if (modeEl && d.market.data_mode) modeEl.innerText = d.market.data_mode.toUpperCase();
+                }
 
-        setInterval(fetchMarket, 2000);
-        setInterval(fetchSignals, 2000);
-        setInterval(fetchBias, 4000);
-        setInterval(fetchAppInfo, 5000);
+                // 2. Live Signals & Win/Loss History with TradeNuro Push & Sound Alerts
+                if (d.signals) {
+                    cachedActiveSignals = d.signals.active || [];
+                    cachedHistorySignals = d.signals.history || [];
+                    cachedStats = d.signals.stats || {};
+                    renderActiveSignals(cachedActiveSignals);
+                    renderSignalHistory(cachedHistorySignals);
+                    renderScorecard(cachedStats);
+
+                    // A. Trigger Alert for Brand New Active Signal
+                    if (cachedActiveSignals.length > 0) {
+                        const topSig = cachedActiveSignals[0];
+                        if (lastSignalId !== null && topSig.id !== lastSignalId) {
+                            triggerPushNotification(
+                                `👑 GOLD ${topSig.action} SIGNAL! [${topSig.timeframe.toUpperCase()}]`,
+                                `@ ${topSig.entry_price} | TP1: ${topSig.take_profit_1} | TP2: ${topSig.take_profit_2}\nSL: ${topSig.stop_loss} ● ${topSig.strategy_name}`,
+                                topSig.id,
+                                topSig.action === 'BUY' ? 'buy' : 'sell'
+                            );
+                        }
+                        lastSignalId = topSig.id;
+                    }
+
+                    // B. Trigger Alert when TP1 Hit (1:1.5 RR)
+                    cachedActiveSignals.forEach(s => {
+                        const tp1Key = s.id + '_tp1';
+                        if (s.tp1_hit && !seenAlertKeys.has(tp1Key)) {
+                            seenAlertKeys.add(tp1Key);
+                            triggerPushNotification(
+                                `🎯 FIRST TP HIT (1:1.5 RR)!`,
+                                `Gold ${s.action} trade hit TP1 @ ${s.take_profit_1}.\nMove SL to Entry! Running to TP2 (1:3.0 RR).`,
+                                tp1Key,
+                                'tp1'
+                            );
+                        }
+                    });
+
+                    // C. Trigger Alert when TP2 Hit (Win in History)
+                    if (cachedHistorySignals.length > 0) {
+                        const topHist = cachedHistorySignals[0];
+                        const winKey = topHist.id + '_closed';
+                        if (topHist.result === 'WIN' && !seenAlertKeys.has(winKey)) {
+                            seenAlertKeys.add(winKey);
+                            triggerPushNotification(
+                                `🏆 FULL WIN (+3.0R TP2 HIT)!`,
+                                `Gold trade hit TP2 @ ${topHist.closed_price} (+3.0R Net Profit)!`,
+                                winKey,
+                                'win'
+                            );
+                        }
+                    }
+                }
+
+                // 3. App Online / Mobile Link
+                if (d.info) {
+                    const bestUrl = d.info.online_url || d.info.mobile_url || window.location.origin;
+                    mobileNetworkUrl = bestUrl;
+                    const urlEl = document.getElementById('modalMobileUrl');
+                    if (urlEl) urlEl.innerText = bestUrl;
+                    const onlineBadge = document.getElementById('headerOnlineLink');
+                    const onlineText = document.getElementById('headerOnlineText');
+                    if (onlineBadge && onlineText && d.info.online_url) {
+                        onlineBadge.style.display = 'inline-flex';
+                        onlineBadge.href = d.info.online_url;
+                        onlineText.innerText = d.info.online_url.replace('https://', '');
+                    }
+                }
+            } catch (e) {
+                console.log("Fast poll error:", e);
+            }
+        }
+
+        // Initialize and unified high-speed loop (100% Gold Exclusive)
+        fetchStrategies();
+        fetchBias();
+        fastPoll();
+
+        setInterval(fastPoll, 2000);
+        setInterval(fetchBias, 15000);
     </script>
+
+    <!-- 16 SMC Strategies Modal Box ("Daba") -->
+    <div id="strategiesModal" class="modal-overlay" onclick="closeStrategiesModal(event)">
+        <div class="modal-card" style="max-width: 680px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; text-align: left; padding: 22px; border: 2px solid #f59e0b; background: #0f172a; box-shadow: 0 0 45px rgba(245, 158, 11, 0.35);" onclick="event.stopPropagation()">
+            <!-- Modal Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 26px;">⚙️</span>
+                    <div>
+                        <div style="font-size: 16px; font-weight: 800; color: #fff;">16 SMC INSTITUTIONAL STRATEGIES DABA</div>
+                        <div style="font-size: 11px; color: #fbbf24;">Pure Gold (XAUUSD) Real-Time Scanning Engine • Individual & Batch Controls</div>
+                    </div>
+                </div>
+                <button onclick="closeStrategiesModal()" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 800;">✕</button>
+            </div>
+
+            <!-- Strategy Quick Stats & Batch Controls -->
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255,255,255,0.08); padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                <div style="font-size: 12px; font-weight: 700; color: #cbd5e1;">
+                    ACTIVE STRATEGIES: <span id="modalActiveCount" style="color: #10b981; font-weight: 800;">16 / 16 (ALL ACTIVE)</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="toggleAllStrategies(true)" style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #10b981; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">✅ ALL ON</button>
+                    <button onclick="toggleAllStrategies(false)" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #ef4444; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">⏹ ALL OFF</button>
+                </div>
+            </div>
+
+            <!-- Scrollable Strategies List (Original Switches Intact) -->
+            <div id="strategyList" style="overflow-y: auto; max-height: calc(85vh - 200px); padding-right: 6px;">
+                <!-- Populated via fetchStrategies() -->
+            </div>
+
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end;">
+                <button onclick="closeStrategiesModal()" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: #fff; font-size: 12px; font-weight: 800; padding: 8px 20px; border-radius: 8px; cursor: pointer;">
+                    ✓ Done / Close Box
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Mobile Connect Modal -->
     <div id="mobileModal" class="modal-overlay" onclick="closeMobileModal(event)">

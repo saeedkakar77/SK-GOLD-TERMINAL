@@ -21,6 +21,7 @@ else:
     except Exception:
         pass
 
+import gzip
 from core.engine import SignalEngine
 
 # Initialize the master trading engine
@@ -30,6 +31,8 @@ PORT = int(os.environ.get("PORT", 5000))
 HTML_PATH = os.path.join(os.path.dirname(__file__), "templates", "index.html")
 
 class TradingAppHandler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
     def handle(self):
         try:
             super().handle()
@@ -41,12 +44,24 @@ class TradingAppHandler(BaseHTTPRequestHandler):
     def _send_json(self, data, status=200):
         try:
             response = json.dumps(data).encode("utf-8")
+            accept_encoding = self.headers.get("Accept-Encoding", "")
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Content-Length", str(len(response)))
-            self.end_headers()
-            self.wfile.write(response)
+            self.send_header("ngrok-skip-browser-warning", "true")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+
+            # Compress JSON if client supports gzip and payload > 400 bytes
+            if "gzip" in accept_encoding and len(response) > 400:
+                compressed = gzip.compress(response, compresslevel=6)
+                self.send_header("Content-Encoding", "gzip")
+                self.send_header("Content-Length", str(len(compressed)))
+                self.end_headers()
+                self.wfile.write(compressed)
+            else:
+                self.send_header("Content-Length", str(len(response)))
+                self.end_headers()
+                self.wfile.write(response)
         except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
             pass
         except Exception:
@@ -54,17 +69,58 @@ class TradingAppHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
-            if self.path == "/" or self.path == "/index.html":
+            clean_path = self.path.split("?")[0].rstrip("/")
+            if clean_path in ["", "/index.html"]:
                 if os.path.exists(HTML_PATH):
                     with open(HTML_PATH, "r", encoding="utf-8") as f:
-                        content = f.read().encode("utf-8")
+                        raw_content = f.read().encode("utf-8")
+                    
+                    accept_encoding = self.headers.get("Accept-Encoding", "")
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.send_header("Content-Length", str(len(content)))
-                    self.end_headers()
-                    self.wfile.write(content)
+                    self.send_header("ngrok-skip-browser-warning", "true")
+                    self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                    
+                    if "gzip" in accept_encoding:
+                        compressed = gzip.compress(raw_content, compresslevel=6)
+                        self.send_header("Content-Encoding", "gzip")
+                        self.send_header("Content-Length", str(len(compressed)))
+                        self.end_headers()
+                        self.wfile.write(compressed)
+                    else:
+                        self.send_header("Content-Length", str(len(raw_content)))
+                        self.end_headers()
+                        self.wfile.write(raw_content)
                 else:
                     self.send_error(404, "index.html template not found")
+            elif clean_path == "/api/poll" or clean_path == "/api/state":
+                ip = get_local_ip()
+                online_url = None
+                url_file = os.path.join(os.path.dirname(__file__), "online_url.txt")
+                if os.path.exists(url_file):
+                    try:
+                        with open(url_file, "r", encoding="utf-8") as f:
+                            content = f.read().strip()
+                            if content.startswith("http"):
+                                online_url = content
+                    except Exception:
+                        pass
+                self._send_json({
+                    "market": engine.get_market_overview(),
+                    "signals": {
+                        "active": engine.get_active_signals(),
+                        "history": engine.get_signal_history(),
+                        "stats": engine.get_history_stats()
+                    },
+                    "bias": engine.get_bias_report(),
+                    "info": {
+                        "pc_url": f"http://127.0.0.1:{PORT}",
+                        "mobile_url": f"http://{ip}:{PORT}",
+                        "online_url": online_url,
+                        "local_ip": ip,
+                        "port": PORT
+                    }
+                })
             elif self.path == "/api/strategies":
                 self._send_json(engine.get_strategy_statuses())
             elif self.path == "/api/market":
@@ -123,9 +179,28 @@ class TradingAppHandler(BaseHTTPRequestHandler):
                 }
                 self._send_json(manifest)
             elif self.path == "/sw.js":
-                sw_script = "self.addEventListener('fetch', function(e) {});"
+                sw_script = """self.addEventListener('install', function(e) {
+    self.skipWaiting();
+});
+self.addEventListener('activate', function(e) {
+    e.waitUntil(self.clients.claim());
+});
+self.addEventListener('notificationclick', function(e) {
+    e.notification.close();
+    e.waitUntil(
+        clients.matchAll({ type: 'window' }).then(function(clientList) {
+            for (var i = 0; i < clientList.length; i++) {
+                var client = clientList[i];
+                if ('focus' in client) return client.focus();
+            }
+            if (clients.openWindow) return clients.openWindow('/');
+        })
+    );
+});
+self.addEventListener('fetch', function(e) {});"""
                 self.send_response(200)
                 self.send_header("Content-Type", "application/javascript")
+                self.send_header("Cache-Control", "no-cache")
                 self.send_header("Content-Length", str(len(sw_script)))
                 self.end_headers()
                 self.wfile.write(sw_script.encode("utf-8"))
@@ -151,7 +226,11 @@ class TradingAppHandler(BaseHTTPRequestHandler):
             if self.path == "/api/strategies/toggle":
                 strategy_id = payload.get("strategy_id")
                 enabled = payload.get("enabled", True)
-                if strategy_id:
+                if strategy_id == "all":
+                    with engine.lock:
+                        for s in engine.strategies.values():
+                            s.enabled = bool(enabled)
+                elif strategy_id:
                     engine.set_strategy_status(strategy_id, enabled)
                 self._send_json({"status": "ok", "strategy_id": strategy_id, "enabled": enabled})
 

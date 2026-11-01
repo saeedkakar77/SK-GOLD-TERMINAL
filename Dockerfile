@@ -5,9 +5,9 @@ WORKDIR /app
 # Copy application files
 COPY . /app
 
-# Port setup
-ENV PORT=5000
-EXPOSE 5000
+# Port setup (Hugging Face Spaces uses 7860 by default)
+ENV PORT=7860
+EXPOSE 7860
 
 # Start trading terminal
 CMD ["python", "server.py"]

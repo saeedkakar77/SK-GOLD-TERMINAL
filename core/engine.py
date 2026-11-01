@@ -63,6 +63,8 @@ class SignalEngine:
         self.lock = threading.Lock()
         self.last_check_time = None
         self.seen_signal_signatures = set()
+        self.cached_bias = None
+        self.last_bias_update = 0
 
         # Seed completed past Gold trades so Win/Loss history is immediately populated
         self._seed_initial_history()
@@ -358,6 +360,16 @@ class SignalEngine:
         scan_counter = 0
         while self.is_running:
             try:
+                # 0. Update ICT higher-timeframe bias in background (cached so web requests are instant)
+                now_ts = time.time()
+                if self.cached_bias is None or (now_ts - self.last_bias_update > 60):
+                    try:
+                        from core.bias_engine import ICTBiasEngine
+                        self.cached_bias = ICTBiasEngine.analyze_market_bias("XAUUSD", self.data_feed)
+                        self.last_bias_update = now_ts
+                    except Exception as be:
+                        pass
+
                 # 1. Update live trade statuses (TP1, TP2, SL transitions)
                 self._update_signal_statuses()
 
@@ -474,7 +486,14 @@ class SignalEngine:
         return sig.__dict__
 
     def get_bias_report(self):
-        from core.bias_engine import ICTBiasEngine
-        with self.lock:
-            sym = self.active_symbol
-        return ICTBiasEngine.analyze_market_bias(sym, self.data_feed)
+        if self.cached_bias:
+            return self.cached_bias
+        try:
+            from core.bias_engine import ICTBiasEngine
+            with self.lock:
+                sym = self.active_symbol
+            self.cached_bias = ICTBiasEngine.analyze_market_bias(sym, self.data_feed)
+            self.last_bias_update = time.time()
+            return self.cached_bias
+        except Exception:
+            return {}
