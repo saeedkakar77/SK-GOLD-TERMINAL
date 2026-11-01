@@ -2,12 +2,11 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy application files
 COPY . /app
 
-# Port setup (Hugging Face Spaces uses 7860 by default)
-ENV PORT=7860
-EXPOSE 7860
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
 
-# Start trading terminal
+EXPOSE 8000
+
 CMD ["python", "server.py"]
