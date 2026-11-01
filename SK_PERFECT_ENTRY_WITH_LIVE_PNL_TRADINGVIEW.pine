@@ -3493,7 +3493,9 @@ if pnl_trade_dir == 0
         pnl_tp2          := pnl_entry_price + (risk_dist * 3.0)
         pnl_entry_bar    := bar_index
         pnl_tp1_hit      := false
-        pnl_strat_name   := "Bullish SMC Order Flow"
+        pnl_strat_name   := isObCreatedAlert ? "True Order Block Retest" : (new_bull_fvg ? "Bullish FVG Imbalance" : "Unicorn Breaker Block")
+        if showTradeLabels
+            label.new(bar_index, low - (atr_val * 0.4), "🚀 BUY SIGNAL: " + pnl_strat_name + "\nEntry: " + str.tostring(pnl_entry_price, "#.##") + "\nSL: " + str.tostring(pnl_stop_loss, "#.##") + "\nTP1: " + str.tostring(pnl_tp1, "#.##") + "\nTP2: " + str.tostring(pnl_tp2, "#.##"), color = color.new(#10b981, 0), textcolor = color.white, style = label.style_label_up, size = size.normal)
     else if sellTrigger
         pnl_trade_dir    := -1
         pnl_entry_price  := close
@@ -3503,7 +3505,9 @@ if pnl_trade_dir == 0
         pnl_tp2          := pnl_entry_price - (risk_dist * 3.0)
         pnl_entry_bar    := bar_index
         pnl_tp1_hit      := false
-        pnl_strat_name   := "Bearish SMC Order Flow"
+        pnl_strat_name   := isObCreatedAlert ? "True Order Block Retest" : (new_bear_fvg ? "Bearish FVG Imbalance" : "Unicorn Breaker Block")
+        if showTradeLabels
+            label.new(bar_index, high + (atr_val * 0.4), "🔻 SELL SIGNAL: " + pnl_strat_name + "\nEntry: " + str.tostring(pnl_entry_price, "#.##") + "\nSL: " + str.tostring(pnl_stop_loss, "#.##") + "\nTP1: " + str.tostring(pnl_tp1, "#.##") + "\nTP2: " + str.tostring(pnl_tp2, "#.##"), color = color.new(#ef4444, 0), textcolor = color.white, style = label.style_label_down, size = size.normal)
 
 // 2. Monitor Active Trade & PnL Tick-by-Tick
 float float_diff = 0.0
@@ -3520,6 +3524,8 @@ if pnl_trade_dir == 1
     if high >= pnl_tp1 and not pnl_tp1_hit
         pnl_tp1_hit   := true
         pnl_stop_loss := pnl_entry_price // Breakeven lock
+        if showTradeLabels
+            label.new(bar_index, high, "TP1 HIT (1:1.5R)\nSL TRAILED TO BE", color = color.new(#38bdf8, 0), textcolor = color.white, style = label.style_label_down, size = size.small)
 
     // Check TP2 Hit (Full Win +3.0R)
     if high >= pnl_tp2
@@ -3527,7 +3533,7 @@ if pnl_trade_dir == 1
         pnl_realized_r      += 3.0
         pnl_realized_cash   += (risk_pts * 3.0 * lotSizeInput * pointValInput)
         if showTradeLabels
-            label.new(bar_index, high, "WIN: TP2 HIT\n+3.0R (+" + str.tostring(risk_pts * 3.0, "#.##") + " pts)", color = color.new(#10b981, 0), textcolor = color.white, style = label.style_label_down, size = size.small)
+            label.new(bar_index, high, "WIN: TP2 HIT (+3.0R)\n+" + str.tostring(risk_pts * 3.0, "#.##") + " pts (+$" + str.tostring(risk_pts * 3.0 * lotSizeInput * pointValInput, "#,###") + ")", color = color.new(#10b981, 0), textcolor = color.white, style = label.style_label_down, size = size.small)
         pnl_trade_dir := 0
 
     // Check SL Hit
@@ -3536,7 +3542,7 @@ if pnl_trade_dir == 1
         pnl_realized_r      -= (pnl_tp1_hit ? 0.0 : 1.0)
         pnl_realized_cash   -= (pnl_tp1_hit ? 0.0 : (risk_pts * lotSizeInput * pointValInput))
         if showTradeLabels
-            label.new(bar_index, low, pnl_tp1_hit ? "BE STOPPED\n0.0R" : "LOSS: SL HIT\n-1.0R", color = color.new(#ef4444, 0), textcolor = color.white, style = label.style_label_up, size = size.small)
+            label.new(bar_index, low, pnl_tp1_hit ? "BE STOPPED (0.0R)" : "LOSS: SL HIT (-1.0R)", color = color.new(#ef4444, 0), textcolor = color.white, style = label.style_label_up, size = size.small)
         pnl_trade_dir := 0
 
 else if pnl_trade_dir == -1
@@ -3549,6 +3555,8 @@ else if pnl_trade_dir == -1
     if low <= pnl_tp1 and not pnl_tp1_hit
         pnl_tp1_hit   := true
         pnl_stop_loss := pnl_entry_price // Breakeven lock
+        if showTradeLabels
+            label.new(bar_index, low, "TP1 HIT (1:1.5R)\nSL TRAILED TO BE", color = color.new(#38bdf8, 0), textcolor = color.white, style = label.style_label_up, size = size.small)
 
     // Check TP2 Hit (Full Win +3.0R)
     if low <= pnl_tp2
@@ -3556,7 +3564,7 @@ else if pnl_trade_dir == -1
         pnl_realized_r      += 3.0
         pnl_realized_cash   += (risk_pts * 3.0 * lotSizeInput * pointValInput)
         if showTradeLabels
-            label.new(bar_index, low, "WIN: TP2 HIT\n+3.0R (+" + str.tostring(risk_pts * 3.0, "#.##") + " pts)", color = color.new(#10b981, 0), textcolor = color.white, style = label.style_label_up, size = size.small)
+            label.new(bar_index, low, "WIN: TP2 HIT (+3.0R)\n+" + str.tostring(risk_pts * 3.0, "#.##") + " pts (+$" + str.tostring(risk_pts * 3.0 * lotSizeInput * pointValInput, "#,###") + ")", color = color.new(#10b981, 0), textcolor = color.white, style = label.style_label_up, size = size.small)
         pnl_trade_dir := 0
 
     // Check SL Hit
@@ -3565,34 +3573,52 @@ else if pnl_trade_dir == -1
         pnl_realized_r      -= (pnl_tp1_hit ? 0.0 : 1.0)
         pnl_realized_cash   -= (pnl_tp1_hit ? 0.0 : (risk_pts * lotSizeInput * pointValInput))
         if showTradeLabels
-            label.new(bar_index, high, pnl_tp1_hit ? "BE STOPPED\n0.0R" : "LOSS: SL HIT\n-1.0R", color = color.new(#ef4444, 0), textcolor = color.white, style = label.style_label_down, size = size.small)
+            label.new(bar_index, high, pnl_tp1_hit ? "BE STOPPED (0.0R)" : "LOSS: SL HIT (-1.0R)", color = color.new(#ef4444, 0), textcolor = color.white, style = label.style_label_down, size = size.small)
         pnl_trade_dir := 0
 
-// 3. Draw Active Trade Lines on Chart
+// 3. Draw Active Trade Lines & Right Axis Labels on Chart
 var line line_entry = na
 var line line_sl    = na
 var line line_tp1   = na
 var line line_tp2   = na
+var label lbl_entry = na
+var label lbl_sl    = na
+var label lbl_tp1   = na
+var label lbl_tp2   = na
 
 if drawTradeLines and pnl_trade_dir != 0
     line.delete(line_entry)
     line.delete(line_sl)
     line.delete(line_tp1)
     line.delete(line_tp2)
+    label.delete(lbl_entry)
+    label.delete(lbl_sl)
+    label.delete(lbl_tp1)
+    label.delete(lbl_tp2)
     
-    line_entry := line.new(pnl_entry_bar, pnl_entry_price, bar_index + 10, pnl_entry_price, color = color.white, width = 2, style = line.style_solid)
-    line_sl    := line.new(pnl_entry_bar, pnl_stop_loss,   bar_index + 10, pnl_stop_loss,   color = color.red,   width = 2, style = line.style_dashed)
-    line_tp1   := line.new(pnl_entry_bar, pnl_tp1,         bar_index + 10, pnl_tp1,         color = color.blue,  width = 1, style = line.style_dotted)
-    line_tp2   := line.new(pnl_entry_bar, pnl_tp2,         bar_index + 10, pnl_tp2,         color = color.green, width = 2, style = line.style_solid)
+    int end_bar = bar_index + 12
+    line_entry := line.new(pnl_entry_bar, pnl_entry_price, end_bar, pnl_entry_price, color = color.white, width = 2, style = line.style_solid)
+    line_sl    := line.new(pnl_entry_bar, pnl_stop_loss,   end_bar, pnl_stop_loss,   color = #ef4444,     width = 2, style = line.style_dashed)
+    line_tp1   := line.new(pnl_entry_bar, pnl_tp1,         end_bar, pnl_tp1,         color = #38bdf8,     width = 1, style = line.style_dotted)
+    line_tp2   := line.new(pnl_entry_bar, pnl_tp2,         end_bar, pnl_tp2,         color = #10b981,     width = 2, style = line.style_solid)
+
+    lbl_entry := label.new(end_bar, pnl_entry_price, "ENTRY: " + str.tostring(pnl_entry_price, "#.##"), color = color.new(#1e293b, 10), textcolor = color.white, style = label.style_label_left, size = size.small)
+    lbl_sl    := label.new(end_bar, pnl_stop_loss,   "SL: " + str.tostring(pnl_stop_loss, "#.##") + (pnl_tp1_hit ? " [BE]" : ""), color = color.new(#7f1d1d, 10), textcolor = #fca5a5, style = label.style_label_left, size = size.small)
+    lbl_tp1   := label.new(end_bar, pnl_tp1,         "TP1: " + str.tostring(pnl_tp1, "#.##") + (pnl_tp1_hit ? " [HIT]" : ""), color = color.new(#0369a1, 10), textcolor = #7dd3fc, style = label.style_label_left, size = size.small)
+    lbl_tp2   := label.new(end_bar, pnl_tp2,         "TP2: " + str.tostring(pnl_tp2, "#.##"), color = color.new(#065f46, 10), textcolor = #6ee7b7, style = label.style_label_left, size = size.small)
 else
     line.delete(line_entry)
     line.delete(line_sl)
     line.delete(line_tp1)
     line.delete(line_tp2)
+    label.delete(lbl_entry)
+    label.delete(lbl_sl)
+    label.delete(lbl_tp1)
+    label.delete(lbl_tp2)
 
 // 4. Render Floating Real-Time PnL Dashboard Table on Live Chart
 pos = tablePosInput == "Top Right" ? position.top_right : tablePosInput == "Bottom Right" ? position.bottom_right : tablePosInput == "Top Left" ? position.top_left : position.bottom_left
-var table pnl_table = table.new(pos, 2, 6, bgcolor = color.new(#0f172a, 15), border_color = color.new(#3b82f6, 30), border_width = 2, frame_color = color.new(#2563eb, 30), frame_width = 2)
+var table pnl_table = table.new(pos, 2, 7, bgcolor = color.new(#0f172a, 15), border_color = color.new(#3b82f6, 30), border_width = 2, frame_color = color.new(#2563eb, 30), frame_width = 2)
 
 if barstate.islast and showPnlDashboard
     int totalTrades = pnl_total_wins + pnl_total_losses
@@ -3607,27 +3633,32 @@ if barstate.islast and showPnlDashboard
     table.cell(pnl_table, 0, 0, "👑 SK INSTITUTIONAL REAL-TIME PnL", bgcolor = color.new(#1e293b, 10), text_color = #fbbf24, text_size = size.small)
 
     // Row 1: Active Position
-    string statusText = pnl_trade_dir == 1 ? "ACTIVE BUY @ " + str.tostring(pnl_entry_price, "#.##") : pnl_trade_dir == -1 ? "ACTIVE SELL @ " + str.tostring(pnl_entry_price, "#.##") : "FLAT (Scanning Setups)"
+    string statusText = pnl_trade_dir == 1 ? ("ACTIVE BUY @ " + str.tostring(pnl_entry_price, "#.##")) : pnl_trade_dir == -1 ? ("ACTIVE SELL @ " + str.tostring(pnl_entry_price, "#.##")) : "FLAT (Scanning 16 Setups)"
     color statusCol = pnl_trade_dir == 1 ? #10b981 : pnl_trade_dir == -1 ? #ef4444 : #94a3b8
-    table.cell(pnl_table, 0, 1, "TRADE STATUS", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 0, 1, "SIGNAL STATUS", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
     table.cell(pnl_table, 1, 1, statusText, text_color = statusCol, text_size = size.tiny, text_halign = text.align_right)
 
-    // Row 2: Live Floating PnL
+    // Row 2: Active Strategy Name
+    string stratText = pnl_trade_dir != 0 ? pnl_strat_name : "16 SMC Confluence"
+    table.cell(pnl_table, 0, 2, "STRATEGY SETUP", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 1, 2, stratText, text_color = #fbbf24, text_size = size.tiny, text_halign = text.align_right)
+
+    // Row 3: Live Floating PnL
     string pnlDisplay = pnl_trade_dir != 0 ? (cashSign + str.tostring(math.abs(float_cash), "#,###.00") + " (" + pnlSign + str.tostring(float_r, "#.##") + "R | " + pnlSign + str.tostring(float_diff, "#.##") + " pts)") : "$0.00 (Flat)"
-    table.cell(pnl_table, 0, 2, "LIVE FLOATING PnL", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
-    table.cell(pnl_table, 1, 2, pnlDisplay, text_color = pnl_trade_dir != 0 ? pnlCol : color.white, text_size = size.small, text_halign = text.align_right)
+    table.cell(pnl_table, 0, 3, "LIVE FLOATING PnL", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 1, 3, pnlDisplay, text_color = pnl_trade_dir != 0 ? pnlCol : color.white, text_size = size.small, text_halign = text.align_right)
 
-    // Row 3: Target TP1 & TP2
+    // Row 4: Target TP1 & TP2
     string targetsStr = pnl_trade_dir != 0 ? ("TP1: " + str.tostring(pnl_tp1, "#.##") + (pnl_tp1_hit ? " (Hit)" : "") + " | TP2: " + str.tostring(pnl_tp2, "#.##")) : "-- / --"
-    table.cell(pnl_table, 0, 3, "TP1 / TP2 TARGETS", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
-    table.cell(pnl_table, 1, 3, targetsStr, text_color = #38bdf8, text_size = size.tiny, text_halign = text.align_right)
+    table.cell(pnl_table, 0, 4, "TP1 / TP2 TARGETS", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 1, 4, targetsStr, text_color = #38bdf8, text_size = size.tiny, text_halign = text.align_right)
 
-    // Row 4: Stop Loss (SL)
+    // Row 5: Stop Loss (SL)
     string slStr = pnl_trade_dir != 0 ? (str.tostring(pnl_stop_loss, "#.##") + (pnl_tp1_hit ? " (BE Locked)" : "")) : "--"
-    table.cell(pnl_table, 0, 4, "STOP LOSS (SL)", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
-    table.cell(pnl_table, 1, 4, slStr, text_color = #f87171, text_size = size.tiny, text_halign = text.align_right)
+    table.cell(pnl_table, 0, 5, "STOP LOSS (SL)", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    table.cell(pnl_table, 1, 5, slStr, text_color = #f87171, text_size = size.tiny, text_halign = text.align_right)
 
-    // Row 5: Historical Win Rate & Realized PnL
-    table.cell(pnl_table, 0, 5, "WIN RATE / REALIZED", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
+    // Row 6: Historical Win Rate & Realized PnL
+    table.cell(pnl_table, 0, 6, "WIN RATE / REALIZED", text_color = #94a3b8, text_size = size.tiny, text_halign = text.align_left)
     string perfStr = str.tostring(winRate, "#.#") + "% (" + str.tostring(pnl_total_wins) + "W-" + str.tostring(pnl_total_losses) + "L) | " + (pnl_realized_r >= 0 ? "+" : "") + str.tostring(pnl_realized_r, "#.##") + "R"
-    table.cell(pnl_table, 1, 5, perfStr, text_color = #fbbf24, text_size = size.tiny, text_halign = text.align_right)
+    table.cell(pnl_table, 1, 6, perfStr, text_color = #fbbf24, text_size = size.tiny, text_halign = text.align_right)

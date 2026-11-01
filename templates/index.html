@@ -284,9 +284,9 @@
             border-radius: 12px;
             padding: 18px 22px;
             border: 2px solid;
-            animation: slideIn 0.3s ease-out;
             position: relative;
             overflow: hidden;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
         }
 
         @keyframes slideIn {
@@ -660,7 +660,7 @@
 
             <!-- TradingView Chart Container with complete options -->
             <div class="tradingview-widget-container" style="flex: 1; height: 100%; min-height: 600px; width: 100%; position: relative;">
-                <!-- 💰 FLOATING LIVE ON-CHART PnL HUD DASHBOARD -->
+                <!-- 💰 FLOATING LIVE ON-CHART PnL & SIGNAL HUD DASHBOARD -->
                 <div id="chartPnlHud" style="position: absolute; top: 12px; left: 16px; z-index: 10; background: rgba(15, 23, 42, 0.94); border: 1.5px solid #10b981; border-radius: 8px; padding: 8px 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); backdrop-filter: blur(8px); display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="dot-pulse" id="hudPnlDot" style="background: #10b981;"></span>
@@ -670,8 +670,12 @@
                         </div>
                     </div>
                     <div style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 12px;">
-                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8;">ACTIVE TRADE</div>
+                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8;">ACTIVE TRADE & STRATEGY</div>
                         <div id="hudTradeInfo" style="font-size: 12px; font-weight: 800; color: #f8fafc;">Scanning 16 Strategies...</div>
+                    </div>
+                    <div id="hudLevelsBox" style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 12px; display: none;">
+                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8;">ENTRY / SL / TARGETS</div>
+                        <div id="hudLevelsInfo" class="mono" style="font-size: 11.5px; font-weight: 800; color: #cbd5e1;">--</div>
                     </div>
                     <div style="border-left: 1px solid rgba(255,255,255,0.1); padding-left: 12px;">
                         <div style="font-size: 10px; font-weight: 700; color: #94a3b8;">HISTORICAL WIN RATE</div>
@@ -1097,6 +1101,7 @@
                     btn.style.boxShadow = 'none';
                 }
             });
+            lastSignalsSignature = '';
             renderSignalsFeed();
         }
 
@@ -1136,7 +1141,7 @@
                 if (scorecard) scorecard.style.display = 'grid';
             }
 
-            lastSignalsHash = ''; // Reset hash so it re-renders immediately
+            lastSignalsSignature = ''; // Reset signature so it re-renders immediately
             renderSignalsFeed();
         }
 
@@ -1239,7 +1244,7 @@
                                     <span class="dot-pulse" style="background: #3b82f6;"></span>
                                     <span>⚡ LIVE ACTIVE TRADE</span>
                                 </div>
-                                <div class="mono" style="font-size: 11.5px; color: #cbd5e1;">${sig.live_status_note || 'Monitoring bar by bar...'}</div>
+                                <div class="mono" id="sigLiveNote_${sig.id}" style="font-size: 11.5px; color: #cbd5e1;">${sig.live_status_note || 'Monitoring bar by bar...'}</div>
                             </div>
                         `;
                     }
@@ -1256,7 +1261,7 @@
                         : 'border: 2px solid #f59e0b; box-shadow: 0 0 20px rgba(245, 158, 11, 0.25);';
 
                     html += `
-                        <div class="signal-card ${isBuy ? 'buy' : 'sell'}" style="${cardBorder}">
+                        <div class="signal-card ${isBuy ? 'buy' : 'sell'}" id="sigCard_${sig.id}" style="${cardBorder}">
                             <div class="signal-header">
                                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                     <span class="signal-badge ${isBuy ? 'badge-buy' : 'badge-sell'}">${sig.action}</span>
@@ -1274,12 +1279,12 @@
                             ${statusBanner}
 
                             <!-- 💰 REAL-TIME FLOATING PnL METRIC BANNER -->
-                            <div style="margin: 8px 0; background: ${pnlBg}; border: 1.5px solid ${pnlColor}; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                            <div id="sigPnlBanner_${sig.id}" style="margin: 8px 0; background: ${pnlBg}; border: 1.5px solid ${pnlColor}; padding: 8px 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
                                 <div style="display: flex; align-items: center; gap: 6px;">
                                     <span style="font-size: 15px;">💰</span>
                                     <strong style="color: ${pnlColor}; font-size: 12px;">LIVE FLOATING PnL:</strong>
                                 </div>
-                                <div class="mono" style="font-size: 14px; font-weight: 900; color: ${pnlColor}; text-shadow: 0 0 10px ${pnlColor}44;">
+                                <div class="mono" id="sigPnlVal_${sig.id}" style="font-size: 14px; font-weight: 900; color: ${pnlColor}; text-shadow: 0 0 10px ${pnlColor}44;">
                                     ${curPnlPts >= 0 ? '+' : ''}${curPnlPts} pts | <strong style="font-size: 15px;">${curPnlR >= 0 ? '+' : ''}${curPnlR}R</strong> (${curPnlUsd >= 0 ? '+$' : '-$'}${Math.abs(curPnlUsd).toLocaleString()})
                                 </div>
                             </div>
@@ -1397,6 +1402,73 @@
                 container.innerHTML = html;
             }
         }
+
+        function updateSignalsFeed(activeList, historyList, stats) {
+            cachedActiveSignals = activeList || [];
+            cachedHistorySignals = historyList || [];
+            cachedStats = stats || {};
+
+            const fullList = (currentSignalsTab === 'active') ? cachedActiveSignals : cachedHistorySignals;
+
+            // Update badge counts for each style filter
+            const countAll = fullList.length;
+            const countScalp = fullList.filter(s => getSignalStyle(s.timeframe) === 'scalp').length;
+            const countIntraday = fullList.filter(s => getSignalStyle(s.timeframe) === 'intraday').length;
+            const countSwing = fullList.filter(s => getSignalStyle(s.timeframe) === 'swing').length;
+
+            const bAll = document.getElementById('badgeCount_all');
+            const bScalp = document.getElementById('badgeCount_scalp');
+            const bIntraday = document.getElementById('badgeCount_intraday');
+            const bSwing = document.getElementById('badgeCount_swing');
+            if (bAll) bAll.innerText = countAll;
+            if (bScalp) bScalp.innerText = countScalp;
+            if (bIntraday) bIntraday.innerText = countIntraday;
+            if (bSwing) bSwing.innerText = countSwing;
+
+            // Apply style filter
+            let displayList = fullList;
+            if (currentStyleFilter !== 'all') {
+                displayList = fullList.filter(s => getSignalStyle(s.timeframe) === currentStyleFilter);
+            }
+
+            // Fingerprint of structural signal state
+            const currentSignature = currentSignalsTab + '|' + currentStyleFilter + '|' + 
+                displayList.map(s => `${s.id}_${s.status}_${s.tp1_hit || false}_${s.action}_${s.entry_price}`).join(',');
+
+            if (currentSignature !== lastSignalsSignature) {
+                lastSignalsSignature = currentSignature;
+                renderSignalsFeed();
+            } else {
+                // Smooth in-place DOM update (ZERO BLINKING!)
+                if (currentSignalsTab === 'active') {
+                    displayList.forEach(sig => {
+                        const pnlValEl = document.getElementById(`sigPnlVal_${sig.id}`);
+                        const pnlBannerEl = document.getElementById(`sigPnlBanner_${sig.id}`);
+                        const curPnlR = (sig.pnl_r !== undefined) ? sig.pnl_r : 0.0;
+                        const curPnlPts = (sig.pnl_pts !== undefined) ? sig.pnl_pts : 0.0;
+                        const curPnlUsd = (sig.pnl_usd !== undefined) ? sig.pnl_usd : 0.0;
+                        const isPnlProf = curPnlR >= 0;
+                        const pnlColor = isPnlProf ? '#10b981' : '#ef4444';
+                        const pnlBg = isPnlProf ? 'rgba(16, 185, 129, 0.14)' : 'rgba(239, 68, 68, 0.14)';
+
+                        if (pnlValEl) {
+                            pnlValEl.style.color = pnlColor;
+                            pnlValEl.innerHTML = `${curPnlPts >= 0 ? '+' : ''}${curPnlPts} pts | <strong style="font-size: 15px;">${curPnlR >= 0 ? '+' : ''}${curPnlR}R</strong> (${curPnlUsd >= 0 ? '+$' : '-$'}${Math.abs(curPnlUsd).toLocaleString()})`;
+                        }
+                        if (pnlBannerEl) {
+                            pnlBannerEl.style.background = pnlBg;
+                            pnlBannerEl.style.borderColor = pnlColor;
+                        }
+
+                        const noteEl = document.getElementById(`sigLiveNote_${sig.id}`);
+                        if (noteEl && sig.live_status_note) {
+                            noteEl.innerText = sig.live_status_note;
+                        }
+                    });
+                }
+            }
+        }
+
 
         async function fetchSignals() {
             try {
@@ -1941,18 +2013,18 @@
                     if (modeEl && d.market.data_mode) modeEl.innerText = d.market.data_mode.toUpperCase();
                 }
 
-                // 2. Live Signals & Win/Loss History with TradeNuro Push & Sound Alerts
+                // 2. Live Signals & Win/Loss History with Zero-Blink Smart Reconciliation
                 if (d.signals) {
-                    cachedActiveSignals = d.signals.active || [];
-                    cachedHistorySignals = d.signals.history || [];
-                    cachedStats = d.signals.stats || {};
-                    renderSignalsFeed();
+                    updateSignalsFeed(d.signals.active, d.signals.history, d.signals.stats);
 
-                    // Update Live Chart Floating PnL HUD
+                    // Update Live Chart Floating PnL & Signal HUD
                     const hudPnlVal = document.getElementById('hudPnlValue');
                     const hudTradeInfo = document.getElementById('hudTradeInfo');
                     const hudWinRate = document.getElementById('hudWinRate');
                     const hudPnlDot = document.getElementById('hudPnlDot');
+                    const hudLevelsBox = document.getElementById('hudLevelsBox');
+                    const hudLevelsInfo = document.getElementById('hudLevelsInfo');
+                    const hudCard = document.getElementById('chartPnlHud');
 
                     if (cachedActiveSignals.length > 0) {
                         const topSig = cachedActiveSignals[0];
@@ -1962,20 +2034,46 @@
                         const isProf = rVal >= 0;
                         const pColor = isProf ? '#10b981' : '#ef4444';
 
+                        if (hudCard) hudCard.style.borderColor = pColor;
+                        if (hudPnlDot) hudPnlDot.style.background = pColor;
                         if (hudPnlVal) {
                             hudPnlVal.innerText = `${usdVal >= 0 ? '+$' : '-$'}${Math.abs(usdVal).toLocaleString()} (${rVal >= 0 ? '+' : ''}${rVal}R | ${ptsVal >= 0 ? '+' : ''}${ptsVal} pts)`;
                             hudPnlVal.style.color = pColor;
                         }
-                        if (hudPnlDot) hudPnlDot.style.background = pColor;
                         if (hudTradeInfo) {
-                            hudTradeInfo.innerHTML = `<span style="color: ${topSig.action === 'BUY' ? '#10b981' : '#ef4444'}; font-weight: 900;">${topSig.action}</span> XAUUSD [${topSig.timeframe.toUpperCase()}] @ ${topSig.entry_price}`;
+                            const badgeBg = topSig.action === 'BUY' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)';
+                            const badgeBorder = topSig.action === 'BUY' ? '#10b981' : '#ef4444';
+                            const badgeCol = topSig.action === 'BUY' ? '#10b981' : '#ef4444';
+                            hudTradeInfo.innerHTML = `
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="background: ${badgeBg}; border: 1px solid ${badgeBorder}; color: ${badgeCol}; padding: 2px 7px; border-radius: 4px; font-weight: 900; font-size: 11px;">${topSig.action}</span>
+                                    <strong style="color: #fbbf24; font-size: 13px;">${topSig.strategy_name}</strong>
+                                    <span class="mono" style="color: #94a3b8; font-size: 11px;">[${topSig.timeframe.toUpperCase()}]</span>
+                                </div>
+                            `;
+                        }
+                        if (hudLevelsBox && hudLevelsInfo) {
+                            hudLevelsBox.style.display = 'block';
+                            hudLevelsInfo.innerHTML = `
+                                Entry: <strong style="color: #fff;">${topSig.entry_price}</strong> | 
+                                SL: <strong style="color: #f87171;">${topSig.stop_loss}</strong> | 
+                                TP1: <strong style="color: #38bdf8;">${topSig.take_profit_1}</strong> | 
+                                TP2: <strong style="color: #34d399;">${topSig.take_profit_2}</strong>
+                            `;
                         }
                     } else {
+                        if (hudCard) hudCard.style.borderColor = 'rgba(255,255,255,0.15)';
+                        if (hudPnlDot) hudPnlDot.style.background = '#94a3b8';
                         if (hudPnlVal) {
-                            hudPnlVal.innerText = "$0.00 (Flat / Waiting)";
+                            hudPnlVal.innerText = "$0.00 (Flat / Scanning)";
                             hudPnlVal.style.color = "#94a3b8";
                         }
-                        if (hudTradeInfo) hudTradeInfo.innerText = "Scanning 16 Strategies...";
+                        if (hudTradeInfo) {
+                            hudTradeInfo.innerHTML = `<span style="color: #94a3b8;">Scanning 16 SMC Strategies on XAUUSD...</span>`;
+                        }
+                        if (hudLevelsBox) {
+                            hudLevelsBox.style.display = 'none';
+                        }
                     }
 
                     if (hudWinRate && cachedStats) {
