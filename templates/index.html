@@ -468,14 +468,44 @@
 </head>
 <body>
 
-    <!-- TradeNuro In-App Alert Banner -->
-    <div id="tradeNuroAlertBanner" class="tradenuro-alert-banner" style="display: none;" onclick="dismissAlertBanner()">
-        <div style="font-size: 28px;" id="alertBannerIcon">👑</div>
-        <div style="flex: 1; min-width: 0;">
-            <div id="alertBannerTitle" style="font-weight: 800; font-size: 13.5px; color: #fbbf24; margin-bottom: 2px;">NEW GOLD SIGNAL</div>
-            <div id="alertBannerBody" class="mono" style="font-size: 11.5px; color: #cbd5e1; line-height: 1.35; white-space: pre-line;">Monitoring market...</div>
+    <!-- Telegram-Style Instant Signal Alert Popup Window (PC & Mobile) -->
+    <div id="telegramAlertPopup" style="display: none; position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 999999; width: 92%; max-width: 480px; background: rgba(15, 23, 42, 0.98); border: 2px solid #38bdf8; border-radius: 14px; padding: 14px 18px; box-shadow: 0 12px 45px rgba(0,0,0,0.85), 0 0 25px rgba(56,189,248,0.4); backdrop-filter: blur(14px);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 26px; height: 26px; border-radius: 50%; background: #229ed9; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 900; box-shadow: 0 0 12px #229ed9;">✈️</div>
+                <strong style="color: #38bdf8; font-size: 13px; letter-spacing: 0.5px;">TELEGRAM INSTANT SIGNAL ALERT</strong>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="popupAlertTime" style="font-size: 11px; color: #94a3b8;" class="mono">Just now</span>
+                <button onclick="dismissTelegramPopup()" style="background: none; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 2px 6px;">✕</button>
+            </div>
         </div>
-        <button onclick="event.stopPropagation(); dismissAlertBanner()" style="background: transparent; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; padding: 4px;">✕</button>
+
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;">
+            <span id="popupActionBadge" style="background: #ef4444; color: #fff; font-size: 13px; font-weight: 900; padding: 4px 12px; border-radius: 6px; letter-spacing: 0.5px;">STRONG SELL</span>
+            <span style="font-size: 14px; font-weight: 800; color: #f8fafc;" class="mono">GOLD (XAUUSD) <span id="popupTfBadge" style="color: #fbbf24;">[M5]</span></span>
+            <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 800;">1:3.0 RR</span>
+        </div>
+
+        <div id="popupStratName" style="color: #fbbf24; font-weight: 800; font-size: 13px; margin-bottom: 10px;">
+            ⚡ Unicorn Setup: Breaker Block + iFVG
+        </div>
+
+        <div id="popupLevelsGrid" class="mono" style="background: rgba(0,0,0,0.55); border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 14px; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+            <div>Entry: <strong id="popupEntry" style="color: #fff; font-size: 13px;">3875.64</strong></div>
+            <div>Stop Loss: <strong id="popupSl" style="color: #f87171; font-size: 13px;">3865.00</strong></div>
+            <div>TP1 (1:1.5): <strong id="popupTp1" style="color: #38bdf8; font-size: 13px;">3890.00</strong></div>
+            <div>TP2 (1:3.0): <strong id="popupTp2" style="color: #34d399; font-size: 13px;">3905.00</strong></div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button onclick="scrollToChartAndDismiss()" style="flex: 2; background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: #fff; font-size: 12.5px; font-weight: 800; padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 0 15px rgba(37,99,235,0.5);">
+                📊 View on Live Chart & PnL
+            </button>
+            <button onclick="dismissTelegramPopup()" style="flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; font-size: 12px; font-weight: 700; padding: 10px; border-radius: 8px; cursor: pointer;">
+                ✕ Dismiss
+            </button>
+        </div>
     </div>
 
     <!-- Header -->
@@ -772,32 +802,132 @@
         // TradeNuro Web Audio Synthesizer
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        function dismissAlertBanner() {
-            const el = document.getElementById('tradeNuroAlertBanner');
-            if (el) el.style.display = 'none';
-            if (bannerTimeout) clearTimeout(bannerTimeout);
+        
+        function renderPositionChartBox(sig) {
+            const isBuy = sig.action === 'BUY';
+            const isTpHit = (sig.status === 'TP1_HIT' || sig.tp1_hit);
+            const curPnlR = (sig.pnl_r !== undefined) ? sig.pnl_r : (sig.result === 'WIN' ? 3.0 : 0.0);
+            const curPnlPts = (sig.pnl_pts !== undefined) ? sig.pnl_pts : 0.0;
+            const curPnlUsd = (sig.pnl_usd !== undefined) ? sig.pnl_usd : 0.0;
+            const isPnlProf = curPnlR >= 0;
+            const pnlColor = isPnlProf ? '#10b981' : '#ef4444';
+
+            // Coordinates for 160px height TradingView Position Box
+            const slY = isBuy ? 130 : 25;
+            const entryY = 75;
+            const tp1Y = isBuy ? 45 : 105;
+            const tp2Y = isBuy ? 20 : 135;
+
+            const riskBoxY = isBuy ? entryY : slY;
+            const riskBoxHeight = isBuy ? (slY - entryY) : (entryY - slY);
+
+            const rewardBoxY = isBuy ? tp2Y : entryY;
+            const rewardBoxHeight = isBuy ? (entryY - tp2Y) : (tp2Y - entryY);
+
+            return `
+                <div style="margin: 12px 0; background: #0b1120; border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; position: relative; box-shadow: inset 0 2px 10px rgba(0,0,0,0.6);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.95); padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 13px;">📈</span>
+                            <strong style="color: #cbd5e1; letter-spacing: 0.5px;">ON-CHART SETUP & RISK/REWARD BOX [${sig.symbol} • ${sig.timeframe.toUpperCase()}]</strong>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <span style="background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; padding: 1px 6px; border-radius: 3px; font-weight: 800; font-size: 9.5px;">1:3.0 RR SETUP</span>
+                            <span style="background: ${isBuy ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}; color: ${isBuy ? '#10b981' : '#ef4444'}; padding: 1px 6px; border-radius: 3px; font-weight: 900; font-size: 9.5px;">${isBuy ? 'LONG' : 'SHORT'}</span>
+                        </div>
+                    </div>
+
+                    <div style="position: relative; width: 100%; height: 160px; background: #080d16;">
+                        <svg width="100%" height="160" viewBox="0 0 540 160" preserveAspectRatio="none" style="display: block;">
+                            <defs>
+                                <pattern id="grid_${sig.id}" width="40" height="30" patternUnits="userSpaceOnUse">
+                                    <path d="M 40 0 L 0 0 0 30" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                                </pattern>
+                            </defs>
+                            <rect width="540" height="160" fill="url(#grid_${sig.id})" />
+
+                            <!-- Background Candlestick Action Prior to Setup -->
+                            <line x1="40" y1="50" x2="40" y2="90" stroke="#4ade80" stroke-width="1.5"/>
+                            <rect x="35" y="60" width="10" height="20" fill="#22c55e" rx="1"/>
+
+                            <line x1="80" y1="40" x2="80" y2="105" stroke="#f87171" stroke-width="1.5"/>
+                            <rect x="75" y="55" width="10" height="35" fill="#ef4444" rx="1"/>
+
+                            <line x1="120" y1="55" x2="120" y2="115" stroke="#f87171" stroke-width="1.5"/>
+                            <rect x="115" y="70" width="10" height="30" fill="#ef4444" rx="1"/>
+
+                            <line x1="160" y1="45" x2="160" y2="95" stroke="#4ade80" stroke-width="1.5"/>
+                            <rect x="155" y="55" width="10" height="25" fill="#22c55e" rx="1"/>
+
+                            <!-- Trigger Candle -->
+                            <line x1="200" y1="${isBuy ? 120 : 20}" x2="200" y2="${isBuy ? 35 : 125}" stroke="${isBuy ? '#4ade80' : '#f87171'}" stroke-width="2"/>
+                            <rect x="194" y="${isBuy ? 45 : 30}" width="12" height="65" fill="${isBuy ? '#22c55e' : '#ef4444'}" rx="1"/>
+
+                            <!-- SHADED RISK BOX (Red / Gray Stop Loss Zone) -->
+                            <rect x="206" y="${riskBoxY}" width="334" height="${riskBoxHeight}" fill="rgba(239, 68, 68, 0.22)" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+
+                            <!-- SHADED REWARD BOX (Cyan / Green Target Zone) -->
+                            <rect x="206" y="${rewardBoxY}" width="334" height="${rewardBoxHeight}" fill="rgba(56, 189, 248, 0.28)" stroke="#38bdf8" stroke-width="1.5"/>
+
+                            <!-- Internal Running Candles Inside Position Box -->
+                            <line x1="240" y1="${isBuy ? 85 : 45}" x2="240" y2="${isBuy ? 45 : 85}" stroke="${isBuy ? '#4ade80' : '#f87171'}" stroke-width="1.5"/>
+                            <rect x="235" y="${isBuy ? 55 : 48}" width="10" height="28" fill="${isBuy ? '#22c55e' : '#ef4444'}" rx="1"/>
+
+                            <line x1="280" y1="${isBuy ? 65 : 60}" x2="280" y2="${isBuy ? 35 : 110}" stroke="${isBuy ? '#4ade80' : '#f87171'}" stroke-width="1.5"/>
+                            <rect x="275" y="${isBuy ? 40 : 65}" width="10" height="40" fill="${isBuy ? '#22c55e' : '#ef4444'}" rx="1"/>
+
+                            <line x1="320" y1="${isBuy ? 50 : 75}" x2="320" y2="${isBuy ? 25 : 120}" stroke="${isBuy ? '#4ade80' : '#f87171'}" stroke-width="1.5"/>
+                            <rect x="315" y="${isBuy ? 30 : 80}" width="10" height="35" fill="${isBuy ? '#22c55e' : '#ef4444'}" rx="1"/>
+
+                            <!-- Level Lines -->
+                            <line x1="0" y1="${entryY}" x2="540" y2="${entryY}" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4,2"/>
+                            <line x1="0" y1="${slY}" x2="540" y2="${slY}" stroke="#ef4444" stroke-width="2"/>
+                            <line x1="0" y1="${tp1Y}" x2="540" y2="${tp1Y}" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="2,2"/>
+                            <line x1="0" y1="${tp2Y}" x2="540" y2="${tp2Y}" stroke="#10b981" stroke-width="2"/>
+
+                            <!-- Level Tags on Right Axis -->
+                            <rect x="430" y="${slY - 9}" width="105" height="17" fill="#7f1d1d" rx="3"/>
+                            <text x="435" y="${slY + 3}" fill="#fca5a5" font-size="9.5" font-family="monospace" font-weight="bold">SL: ${sig.stop_loss}</text>
+
+                            <rect x="420" y="${entryY - 9}" width="115" height="17" fill="#1e293b" rx="3"/>
+                            <text x="425" y="${entryY + 3}" fill="#ffffff" font-size="9.5" font-family="monospace" font-weight="bold">ENTRY: ${sig.entry_price}</text>
+
+                            <rect x="430" y="${tp1Y - 9}" width="105" height="17" fill="#0369a1" rx="3"/>
+                            <text x="435" y="${tp1Y + 3}" fill="#7dd3fc" font-size="9.5" font-family="monospace" font-weight="bold">TP1: ${sig.take_profit_1}</text>
+
+                            <rect x="430" y="${tp2Y - 9}" width="105" height="17" fill="#065f46" rx="3"/>
+                            <text x="435" y="${tp2Y + 3}" fill="#6ee7b7" font-size="9.5" font-family="monospace" font-weight="bold">TP2: ${sig.take_profit_2}</text>
+                        </svg>
+
+                        <!-- Floating Real-Time PnL Badge Centered on Position Box -->
+                        <div style="position: absolute; top: 12px; left: 16px; background: rgba(15, 23, 42, 0.94); border: 1.5px solid ${pnlColor}; border-radius: 6px; padding: 5px 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.7); backdrop-filter: blur(6px); display: flex; align-items: center; gap: 8px;">
+                            <span class="dot-pulse" style="background: ${pnlColor};"></span>
+                            <div class="mono" style="font-size: 12.5px; font-weight: 900; color: ${pnlColor};">
+                                ${curPnlPts >= 0 ? '+' : ''}${curPnlPts} pts (${curPnlR >= 0 ? '+' : ''}${curPnlR}R) • <span style="color: #fff;">${curPnlUsd >= 0 ? '+$' : '-$'}${Math.abs(curPnlUsd).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div style="position: absolute; bottom: 8px; left: 16px; background: rgba(0,0,0,0.75); padding: 3px 8px; border-radius: 4px; font-size: 10px; color: #94a3b8; border: 1px solid rgba(255,255,255,0.08);">
+                            ${isTpHit ? '🎯 <strong style="color: #10b981;">TP1 Hit</strong> • Trailing BE' : '⏳ <strong style="color: #38bdf8;">Running in Position Box</strong>'}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        function showInAppAlert(title, body, icon = '👑', border = '#f59e0b') {
-            const el = document.getElementById('tradeNuroAlertBanner');
-            const titleEl = document.getElementById('alertBannerTitle');
-            const bodyEl = document.getElementById('alertBannerBody');
-            const iconEl = document.getElementById('alertBannerIcon');
-            if (!el || !titleEl || !bodyEl) return;
 
-            titleEl.innerText = title;
-            bodyEl.innerText = body;
-            if (iconEl) iconEl.innerText = icon;
-            el.style.borderColor = border;
-            el.style.display = 'flex';
-
-            if (bannerTimeout) clearTimeout(bannerTimeout);
-            bannerTimeout = setTimeout(() => {
-                el.style.display = 'none';
-            }, 7000);
+        function dismissTelegramPopup() {
+            const p = document.getElementById('telegramAlertPopup');
+            if (p) p.style.display = 'none';
         }
 
-        // Multi-Tone Harmonized TradeNuro Chime Synthesizer
+        function scrollToChartAndDismiss() {
+            dismissTelegramPopup();
+            const el = document.getElementById('tradingview_gold_chart');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // High Volume Multi-Harmonic Ringtone Synthesizer (PC & Mobile)
         function playAlertSound(type = 'buy') {
             if (!audioEnabled) return;
             try {
@@ -805,67 +935,137 @@
                     audioCtx.resume();
                 }
                 const now = audioCtx.currentTime;
+
+                // Dual-Burst Ringtone (Burst 1 at 0s, Burst 2 at 0.38s like Telegram/Phone call)
+                const burstOffsets = [0.0, 0.38];
                 
-                // Crisp institutional harmonic frequencies
-                let freqs = [587.33, 739.99, 880.0, 1174.66]; // D5-F#5-A5-D6 (Ascending Buy Chime)
-                if (type === 'sell' || type === false) {
-                    freqs = [1046.50, 880.0, 659.25, 523.25]; // C6-A5-E5-C5 (Descending Sell Chime)
-                } else if (type === 'tp1' || type === 'tp2' || type === 'win') {
-                    freqs = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // Major Victory Fanfare
-                }
+                burstOffsets.forEach(burstDelay => {
+                    let freqs = [];
+                    if (type === 'buy') {
+                        freqs = [659.25, 880.0, 1174.66, 1567.98]; // E5 - A5 - D6 - G6 (Ascending Buy Chime)
+                    } else if (type === 'sell' || type === false) {
+                        freqs = [1567.98, 1174.66, 880.0, 659.25]; // G6 - D6 - A5 - E5 (Descending Sell Alert)
+                    } else if (type === 'tp1' || type === 'tp2' || type === 'win') {
+                        freqs = [783.99, 987.77, 1318.51, 1760.00]; // G5 - B5 - E6 - A6 (TP Victory Fanfare)
+                    }
 
-                freqs.forEach((freq, idx) => {
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    freqs.forEach((freq, idx) => {
+                        const noteStart = now + burstDelay + (idx * 0.075);
 
-                    gain.gain.setValueAtTime(0.001, now + idx * 0.08);
-                    gain.gain.exponentialRampToValueAtTime(0.35, now + idx * 0.08 + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.35);
+                        // 1. Rich Body Oscillator (Triangle wave)
+                        const osc1 = audioCtx.createOscillator();
+                        const gain1 = audioCtx.createGain();
+                        osc1.type = 'triangle';
+                        osc1.frequency.setValueAtTime(freq, noteStart);
 
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
+                        // High Volume Peak (0.95 maximum amplitude)
+                        gain1.gain.setValueAtTime(0.001, noteStart);
+                        gain1.gain.exponentialRampToValueAtTime(0.95, noteStart + 0.015);
+                        gain1.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.28);
 
-                    osc.start(now + idx * 0.08);
-                    osc.stop(now + idx * 0.08 + 0.4);
+                        osc1.connect(gain1);
+                        gain1.connect(audioCtx.destination);
+                        osc1.start(noteStart);
+                        osc1.stop(noteStart + 0.3);
+
+                        // 2. Bright Penetrating Chime (Sine 5th Harmonic)
+                        const osc2 = audioCtx.createOscillator();
+                        const gain2 = audioCtx.createGain();
+                        osc2.type = 'sine';
+                        osc2.frequency.setValueAtTime(freq * 1.5, noteStart);
+
+                        gain2.gain.setValueAtTime(0.001, noteStart);
+                        gain2.gain.exponentialRampToValueAtTime(0.75, noteStart + 0.015);
+                        gain2.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.28);
+
+                        osc2.connect(gain2);
+                        gain2.connect(audioCtx.destination);
+                        osc2.start(noteStart);
+                        osc2.stop(noteStart + 0.3);
+                    });
                 });
 
-                // Trigger mobile hardware vibration (pattern: buzz, pause, buzz)
+                // Hardware Vibration on Mobile Devices
                 if ('vibrate' in navigator) {
-                    navigator.vibrate([250, 100, 250, 100, 350]);
+                    navigator.vibrate([350, 150, 350, 150, 500]);
                 }
             } catch (e) {
                 console.log("Audio alert error:", e);
             }
         }
 
-        function triggerPushNotification(title, body, tag = 'gold-signal', type = 'buy') {
-            // 1. Play TradeNuro Sound Chime
+        let telegramPopupTimeout = null;
+
+        function showTelegramPopup(title, body, type = 'buy', sig = null) {
+            const popup = document.getElementById('telegramAlertPopup');
+            if (!popup) return;
+
+            const timeEl = document.getElementById('popupAlertTime');
+            const actionEl = document.getElementById('popupActionBadge');
+            const tfEl = document.getElementById('popupTfBadge');
+            const stratEl = document.getElementById('popupStratName');
+            const entryEl = document.getElementById('popupEntry');
+            const slEl = document.getElementById('popupSl');
+            const tp1El = document.getElementById('popupTp1');
+            const tp2El = document.getElementById('popupTp2');
+
+            const now = new Date();
+            if (timeEl) timeEl.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const isBuy = (type === 'buy' || (sig && sig.action === 'BUY'));
+            if (actionEl) {
+                actionEl.innerText = isBuy ? 'STRONG BUY' : 'STRONG SELL';
+                actionEl.style.background = isBuy ? '#10b981' : '#ef4444';
+            }
+
+            if (sig) {
+                if (tfEl) tfEl.innerText = `[${sig.timeframe.toUpperCase()}]`;
+                if (stratEl) stratEl.innerHTML = `⚡ ${sig.strategy_name}`;
+                if (entryEl) entryEl.innerText = sig.entry_price;
+                if (slEl) slEl.innerText = sig.stop_loss;
+                if (tp1El) tp1El.innerText = sig.take_profit_1;
+                if (tp2El) tp2El.innerText = sig.take_profit_2;
+            } else {
+                if (stratEl) stratEl.innerText = title;
+            }
+
+            popup.style.borderColor = isBuy ? '#10b981' : '#ef4444';
+            popup.style.display = 'block';
+
+            if (telegramPopupTimeout) clearTimeout(telegramPopupTimeout);
+            telegramPopupTimeout = setTimeout(() => {
+                popup.style.display = 'none';
+            }, 10000);
+        }
+
+        function triggerPushNotification(title, body, tag = 'gold-signal', type = 'buy', sig = null) {
+            // 1. Play High Volume Loud Ringtone
             playAlertSound(type);
 
-            // 2. Show In-App Sliding Banner
-            const icon = (type === 'buy') ? '🟢' : (type === 'sell') ? '🔴' : '🎯';
-            const border = (type === 'buy') ? '#10b981' : (type === 'sell') ? '#ef4444' : '#f59e0b';
-            showInAppAlert(title, body, icon, border);
+            // 2. Show Telegram-Style Popup
+            showTelegramPopup(title, body, type, sig);
 
-            // 3. Trigger Native Mobile Notification
+            // 3. Trigger Native Mobile & Desktop Browser Notification
             if ('Notification' in window && Notification.permission === 'granted') {
                 try {
+                    const notifTitle = `⚡ GOLD ${type.toUpperCase()} SIGNAL: ${sig ? sig.strategy_name : title}`;
+                    const notifBody = sig ? `@ ${sig.entry_price} | TP1: ${sig.take_profit_1} | TP2: ${sig.take_profit_2}
+SL: ${sig.stop_loss}` : body;
+                    
                     if (navigator.serviceWorker && navigator.serviceWorker.controller) {
                         navigator.serviceWorker.ready.then(reg => {
-                            reg.showNotification(title, {
-                                body: body,
+                            reg.showNotification(notifTitle, {
+                                body: notifBody,
                                 icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">👑</text></svg>',
                                 badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">👑</text></svg>',
-                                vibrate: [300, 150, 300, 150, 450],
+                                vibrate: [350, 150, 350, 150, 500],
                                 tag: tag,
                                 renotify: true
                             });
                         });
                     } else {
-                        new Notification(title, {
-                            body: body,
+                        new Notification(notifTitle, {
+                            body: notifBody,
                             icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">👑</text></svg>'
                         });
                     }
@@ -1288,6 +1488,10 @@
                                     ${curPnlPts >= 0 ? '+' : ''}${curPnlPts} pts | <strong style="font-size: 15px;">${curPnlR >= 0 ? '+' : ''}${curPnlR}R</strong> (${curPnlUsd >= 0 ? '+$' : '-$'}${Math.abs(curPnlUsd).toLocaleString()})
                                 </div>
                             </div>
+
+                            ${renderPositionChartBox(sig)}
+
+                            ${renderPositionChartBox(sig)}
 
                             <div class="signal-levels mono">
                                 <div class="level-box">
@@ -2090,7 +2294,8 @@
                                 `👑 GOLD ${topSig.action} SIGNAL! [${topSig.timeframe.toUpperCase()}]`,
                                 `@ ${topSig.entry_price} | TP1: ${topSig.take_profit_1} | TP2: ${topSig.take_profit_2}\nSL: ${topSig.stop_loss} ● ${topSig.strategy_name}`,
                                 topSig.id,
-                                topSig.action === 'BUY' ? 'buy' : 'sell'
+                                topSig.action === 'BUY' ? 'buy' : 'sell',
+                                topSig
                             );
                         }
                         lastSignalId = topSig.id;

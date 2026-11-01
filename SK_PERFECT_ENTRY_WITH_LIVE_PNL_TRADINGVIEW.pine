@@ -3576,7 +3576,7 @@ else if pnl_trade_dir == -1
             label.new(bar_index, high, pnl_tp1_hit ? "BE STOPPED (0.0R)" : "LOSS: SL HIT (-1.0R)", color = color.new(#ef4444, 0), textcolor = color.white, style = label.style_label_down, size = size.small)
         pnl_trade_dir := 0
 
-// 3. Draw Active Trade Lines & Right Axis Labels on Chart
+// 3. Draw Active Trade Lines, Right Axis Labels & Risk/Reward Shaded Position Box on Chart
 var line line_entry = na
 var line line_sl    = na
 var line line_tp1   = na
@@ -3585,6 +3585,8 @@ var label lbl_entry = na
 var label lbl_sl    = na
 var label lbl_tp1   = na
 var label lbl_tp2   = na
+var box   box_risk  = na
+var box   box_reward = na
 
 if drawTradeLines and pnl_trade_dir != 0
     line.delete(line_entry)
@@ -3595,15 +3597,25 @@ if drawTradeLines and pnl_trade_dir != 0
     label.delete(lbl_sl)
     label.delete(lbl_tp1)
     label.delete(lbl_tp2)
+    box.delete(box_risk)
+    box.delete(box_reward)
     
-    int end_bar = bar_index + 12
+    int end_bar = bar_index + 16
     line_entry := line.new(pnl_entry_bar, pnl_entry_price, end_bar, pnl_entry_price, color = color.white, width = 2, style = line.style_solid)
     line_sl    := line.new(pnl_entry_bar, pnl_stop_loss,   end_bar, pnl_stop_loss,   color = #ef4444,     width = 2, style = line.style_dashed)
-    line_tp1   := line.new(pnl_entry_bar, pnl_tp1,         end_bar, pnl_tp1,         color = #38bdf8,     width = 1, style = line.style_dotted)
+    line_tp1   := line.new(pnl_entry_bar, pnl_tp1,         end_bar, pnl_tp1,         color = #38bdf8,     width = 2, style = line.style_solid)
     line_tp2   := line.new(pnl_entry_bar, pnl_tp2,         end_bar, pnl_tp2,         color = #10b981,     width = 2, style = line.style_solid)
 
+    // Exact Short / Long Position Shaded Risk/Reward Boxes (Just like TradingView Position Tool)
+    if pnl_trade_dir == -1 // Short Position (Sell Setup)
+        box_risk   := box.new(pnl_entry_bar, pnl_stop_loss, end_bar, pnl_entry_price, border_color = color.new(#ef4444, 40), bgcolor = color.new(#94a3b8, 65), border_width = 1)
+        box_reward := box.new(pnl_entry_bar, pnl_entry_price, end_bar, pnl_tp2,       border_color = color.new(#0284c7, 40), bgcolor = color.new(#38bdf8, 65), border_width = 1)
+    else if pnl_trade_dir == 1 // Long Position (Buy Setup)
+        box_risk   := box.new(pnl_entry_bar, pnl_entry_price, end_bar, pnl_stop_loss, border_color = color.new(#ef4444, 40), bgcolor = color.new(#94a3b8, 65), border_width = 1)
+        box_reward := box.new(pnl_entry_bar, pnl_tp2,         end_bar, pnl_entry_price, border_color = color.new(#059669, 40), bgcolor = color.new(#10b981, 65), border_width = 1)
+
     lbl_entry := label.new(end_bar, pnl_entry_price, "ENTRY: " + str.tostring(pnl_entry_price, "#.##"), color = color.new(#1e293b, 10), textcolor = color.white, style = label.style_label_left, size = size.small)
-    lbl_sl    := label.new(end_bar, pnl_stop_loss,   "SL: " + str.tostring(pnl_stop_loss, "#.##") + (pnl_tp1_hit ? " [BE]" : ""), color = color.new(#7f1d1d, 10), textcolor = #fca5a5, style = label.style_label_left, size = size.small)
+    lbl_sl    := label.new(end_bar, pnl_stop_loss,   "SL: " + str.tostring(pnl_stop_loss, "#.##") + (pnl_tp1_hit ? " [BE Locked]" : ""), color = color.new(#7f1d1d, 10), textcolor = #fca5a5, style = label.style_label_left, size = size.small)
     lbl_tp1   := label.new(end_bar, pnl_tp1,         "TP1: " + str.tostring(pnl_tp1, "#.##") + (pnl_tp1_hit ? " [HIT]" : ""), color = color.new(#0369a1, 10), textcolor = #7dd3fc, style = label.style_label_left, size = size.small)
     lbl_tp2   := label.new(end_bar, pnl_tp2,         "TP2: " + str.tostring(pnl_tp2, "#.##"), color = color.new(#065f46, 10), textcolor = #6ee7b7, style = label.style_label_left, size = size.small)
 else
@@ -3615,6 +3627,8 @@ else
     label.delete(lbl_sl)
     label.delete(lbl_tp1)
     label.delete(lbl_tp2)
+    box.delete(box_risk)
+    box.delete(box_reward)
 
 // 4. Render Floating Real-Time PnL Dashboard Table on Live Chart
 pos = tablePosInput == "Top Right" ? position.top_right : tablePosInput == "Bottom Right" ? position.bottom_right : tablePosInput == "Top Left" ? position.top_left : position.bottom_left
