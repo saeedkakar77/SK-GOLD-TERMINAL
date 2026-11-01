@@ -5,12 +5,22 @@ cd /d "%~dp0"
 echo ========================================================
 echo    SK INSTITUTIONAL GOLD TERMINAL — WORLDWIDE ONLINE
 echo ========================================================
+echo.
+
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Python is not installed or not in PATH!
+    echo Please double-click 'INSTALL_AND_RUN_VPS.bat' first to install Python automatically.
+    echo.
+    pause
+    exit /b 1
+)
 
 :: 1. Start python server if not listening on port 5000
 netstat -aon | findstr :5000 | findstr LISTENING >nul
 if errorlevel 1 (
     echo Starting SK Gold Signal Engine on Port 5000...
-    start "SK Trading Server" /min python server.py
+    start "SK Trading Server" python server.py
     ping 127.0.0.1 -n 3 >nul
 ) else (
     echo SK Gold Signal Engine is already active on Port 5000.
@@ -18,7 +28,7 @@ if errorlevel 1 (
 
 :: 2. Launch Ngrok High-Speed Edge Tunnel
 echo Starting Ngrok Worldwide Secure Tunnel...
-start "SK Ngrok Tunnel" /min node ngrok_tunnel.js
+start "SK Ngrok Tunnel" node ngrok_tunnel.js
 
 ping 127.0.0.1 -n 3 >nul
 
@@ -26,3 +36,5 @@ echo ========================================================
 echo [*] TERMINAL IS LIVE WORLDWIDE 24/7!
 echo [*] Desktop Shortcut: ONLINE_MOBILE_LINK.url
 echo ========================================================
+echo.
+pause
