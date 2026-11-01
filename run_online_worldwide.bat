@@ -1,6 +1,6 @@
 @echo off
 title SK Institutional Gold Terminal (Worldwide Online Mode)
-cd /d "C:\Users\princ\.gemini\antigravity\scratch\trading_signal_app"
+cd /d "%~dp0"
 
 echo ========================================================
 echo    SK INSTITUTIONAL GOLD TERMINAL — WORLDWIDE ONLINE
