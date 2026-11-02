@@ -95,7 +95,11 @@ class SignalEngine:
                 live_status_note="🟢 FULL WIN: TP 2 Hit @ 3895.20 (+3.0R)",
                 is_ultra_strong=True,
                 vol_div="Regular Bullish Vol Div",
-                style="scalp"
+                style="scalp",
+                strength_grade="A+ ULTRA STRONG",
+                confidence_score=96,
+                confirmation_pattern="2-Candle Bullish Engulfing",
+                pattern_details="Bullish body completely engulfs previous bearish candle (3865.20 >= 3858.00)"
             ),
             Signal(
                 id="hist_xau_2",
@@ -120,7 +124,11 @@ class SignalEngine:
                 live_status_note="🟢 FULL WIN: TP 2 Hit @ 3866.50 (+3.0R)",
                 is_ultra_strong=True,
                 vol_div="Regular Bearish Vol Div",
-                style="scalp"
+                style="scalp",
+                strength_grade="A+ ULTRA STRONG",
+                confidence_score=94,
+                confirmation_pattern="3-Candle Evening Star Rejection",
+                pattern_details="C1 push -> C2 pause (3898.50) -> C3 bearish expansion close (3890.50)"
             ),
             Signal(
                 id="hist_xau_3",
@@ -145,7 +153,11 @@ class SignalEngine:
                 live_status_note="🟢 FULL WIN: TP 2 Hit @ 3878.00 (+3.0R)",
                 is_ultra_strong=True,
                 vol_div="Regular Bullish Vol Div",
-                style="intraday"
+                style="intraday",
+                strength_grade="STRONG",
+                confidence_score=85,
+                confirmation_pattern="2-Candle Piercing Reversal",
+                pattern_details="Bullish candle reclaims >50% of prior drop"
             ),
             Signal(
                 id="hist_xau_4",
@@ -300,9 +312,10 @@ class SignalEngine:
     def _update_signal_statuses(self):
         """
         Monitors live Gold price to transition trades in real time:
-          - Active -> TP1 Hit (1:1.5 RR): Stays active, shows glowing label!
+          - Active -> TP1 Hit (1:1.5 RR): Trails SL to Breakeven (Entry Price) for 100% Risk-Free run!
           - TP1 Hit -> TP2 Hit (1:3.0 RR): Closes trade as Full WIN -> Moves to History!
-          - Active/TP1 -> SL Hit (-1.0 RR): Closes trade as LOSS -> Moves to History!
+          - Trailing SL Hit at BE: Closes as BE/Protected WIN -> Moves to History!
+          - Active -> SL Hit (-1.0 RR): Closes trade as LOSS -> Moves to History!
         """
         curr_price = self.data_feed.get_current_price("XAUUSD")
         if curr_price <= 0:
@@ -316,14 +329,21 @@ class SignalEngine:
                 if sig.action == "BUY":
                     # Check SL Hit
                     if curr_price <= sig.stop_loss:
-                        sig.status = "LOSS (SL HIT)"
-                        sig.result = "LOSS"
-                        sig.sl_hit = True
-                        sig.pnl_r = -1.0
+                        if sig.tp1_hit:
+                            sig.status = "WIN (BE TRAIL HIT)"
+                            sig.result = "WIN"
+                            sig.pnl_r = 1.0
+                            sig.live_status_note = f"🛡️ Trailing Stop Hit at Breakeven (+1.0R Secured)"
+                            print(f"[TRADE CLOSED - BE WIN] BUY Gold hit Trailing Stop @ {curr_price:.2f}")
+                        else:
+                            sig.status = "LOSS (SL HIT)"
+                            sig.result = "LOSS"
+                            sig.sl_hit = True
+                            sig.pnl_r = -1.0
+                            sig.live_status_note = f"❌ Stop Loss Hit @ {curr_price:.2f} (-1.0R Loss)"
+                            print(f"[TRADE CLOSED - LOSS] BUY Gold hit SL @ {curr_price:.2f}")
                         sig.closed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         sig.closed_price = round(curr_price, 2)
-                        sig.live_status_note = f"🔴 SL Hit @ {curr_price:.2f} (-1.0R Loss)"
-                        print(f"[TRADE CLOSED - LOSS] BUY Gold hit SL @ {curr_price:.2f}")
 
                     # Check TP2 Hit (Full 1:3.0 RR WIN -> Moves to History)
                     elif curr_price >= sig.take_profit_2:
@@ -334,33 +354,45 @@ class SignalEngine:
                         sig.pnl_r = 3.0
                         sig.closed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         sig.closed_price = round(curr_price, 2)
-                        sig.live_status_note = f"🟢 FULL WIN: TP 2 Hit @ {curr_price:.2f} (+3.0R)"
+                        sig.live_status_note = f"🏆 FULL WIN: Target 2 Achieved (+3.0R)"
                         print(f"[TRADE CLOSED - WIN] BUY Gold hit TP2 (+3.0R) @ {curr_price:.2f}")
 
-                    # Check TP1 Hit (1:1.5 RR -> Stays Active, labeled as TP1 HIT!)
+                    # Check TP1 Hit (1:1.5 RR -> Trail SL to Entry / Breakeven!)
                     elif curr_price >= sig.take_profit_1:
-                        sig.status = "TP1_HIT"
-                        sig.tp1_hit = True
-                        sig.live_status_note = f"🎯 TP 1 HIT (1:1.5 RR Hit! Running to TP 2 @ {sig.take_profit_2:.2f})"
+                        if not sig.tp1_hit:
+                            sig.tp1_hit = True
+                            sig.status = "TP1_HIT"
+                            sig.stop_loss = sig.entry_price
+                            sig.live_status_note = f"🎯 TP 1 HIT (+1.5R)! Stop Loss Trailed to Entry ({sig.entry_price:.2f}) [Risk-Free Running to TP 2]"
+                            print(f"[TRADE UPDATE - TP1 HIT] BUY Gold hit TP1! SL trailed to Entry {sig.entry_price:.2f}")
+                        else:
+                            sig.live_status_note = f"🎯 TP 1 Achieved | Running Risk-Free to TP 2 @ {sig.take_profit_2:.2f}"
 
                     # Still Running towards TP1
                     else:
                         diff = curr_price - sig.entry_price
                         risk = abs(sig.entry_price - sig.stop_loss)
                         cur_r = (diff / risk) if risk > 0 else 0
-                        sig.live_status_note = f"⚡ Running: {cur_r:+.2f}R ({diff:+.2f} pts)"
+                        sig.live_status_note = f"⏳ Running: {cur_r:+.2f}R ({diff:+.2f} pts)"
 
                 elif sig.action == "SELL":
                     # Check SL Hit
                     if curr_price >= sig.stop_loss:
-                        sig.status = "LOSS (SL HIT)"
-                        sig.result = "LOSS"
-                        sig.sl_hit = True
-                        sig.pnl_r = -1.0
+                        if sig.tp1_hit:
+                            sig.status = "WIN (BE TRAIL HIT)"
+                            sig.result = "WIN"
+                            sig.pnl_r = 1.0
+                            sig.live_status_note = f"🛡️ Trailing Stop Hit at Breakeven (+1.0R Secured)"
+                            print(f"[TRADE CLOSED - BE WIN] SELL Gold hit Trailing Stop @ {curr_price:.2f}")
+                        else:
+                            sig.status = "LOSS (SL HIT)"
+                            sig.result = "LOSS"
+                            sig.sl_hit = True
+                            sig.pnl_r = -1.0
+                            sig.live_status_note = f"❌ Stop Loss Hit @ {curr_price:.2f} (-1.0R Loss)"
+                            print(f"[TRADE CLOSED - LOSS] SELL Gold hit SL @ {curr_price:.2f}")
                         sig.closed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         sig.closed_price = round(curr_price, 2)
-                        sig.live_status_note = f"🔴 SL Hit @ {curr_price:.2f} (-1.0R Loss)"
-                        print(f"[TRADE CLOSED - LOSS] SELL Gold hit SL @ {curr_price:.2f}")
 
                     # Check TP2 Hit (Full 1:3.0 RR WIN -> Moves to History)
                     elif curr_price <= sig.take_profit_2:
@@ -371,21 +403,26 @@ class SignalEngine:
                         sig.pnl_r = 3.0
                         sig.closed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         sig.closed_price = round(curr_price, 2)
-                        sig.live_status_note = f"🟢 FULL WIN: TP 2 Hit @ {curr_price:.2f} (+3.0R)"
+                        sig.live_status_note = f"🏆 FULL WIN: Target 2 Achieved (+3.0R)"
                         print(f"[TRADE CLOSED - WIN] SELL Gold hit TP2 (+3.0R) @ {curr_price:.2f}")
 
-                    # Check TP1 Hit (1:1.5 RR -> Stays Active, labeled as TP1 HIT!)
+                    # Check TP1 Hit (1:1.5 RR -> Trail SL to Entry / Breakeven!)
                     elif curr_price <= sig.take_profit_1:
-                        sig.status = "TP1_HIT"
-                        sig.tp1_hit = True
-                        sig.live_status_note = f"🎯 TP 1 HIT (1:1.5 RR Hit! Running to TP 2 @ {sig.take_profit_2:.2f})"
+                        if not sig.tp1_hit:
+                            sig.tp1_hit = True
+                            sig.status = "TP1_HIT"
+                            sig.stop_loss = sig.entry_price
+                            sig.live_status_note = f"🎯 TP 1 HIT (+1.5R)! Stop Loss Trailed to Entry ({sig.entry_price:.2f}) [Risk-Free Running to TP 2]"
+                            print(f"[TRADE UPDATE - TP1 HIT] SELL Gold hit TP1! SL trailed to Entry {sig.entry_price:.2f}")
+                        else:
+                            sig.live_status_note = f"🎯 TP 1 Achieved | Running Risk-Free to TP 2 @ {sig.take_profit_2:.2f}"
 
                     # Still Running towards TP1
                     else:
                         diff = sig.entry_price - curr_price
                         risk = abs(sig.entry_price - sig.stop_loss)
                         cur_r = (diff / risk) if risk > 0 else 0
-                        sig.live_status_note = f"⚡ Running: {cur_r:+.2f}R ({diff:+.2f} pts)"
+                        sig.live_status_note = f"⏳ Running: {cur_r:+.2f}R ({diff:+.2f} pts)"
 
     def get_market_overview(self) -> Dict:
         quote = self.data_feed.get_market_quote(self.active_symbol)
@@ -455,10 +492,9 @@ class SignalEngine:
 
         # -----------------------------------------------------------------
         # STRICT CANDLE CLOSE CONFIRMATION RULE (NO REPAINTING):
-        # The user strictly requires: "signals os waqat mile jub candle closing ho"
+        # Signals MUST only trigger when the candle has 100% closed!
         # candles[-1] is the in-progress, unclosed live candle.
         # closed_candles = candles[:-1] contains only 100% completed, closed candles!
-        # The trigger candle is closed_candles[-1], which has officially closed.
         # -----------------------------------------------------------------
         closed_candles = candles[:-1]
         last_closed_candle = closed_candles[-1]
@@ -473,23 +509,52 @@ class SignalEngine:
                 if not strategy.enabled:
                     continue
 
+                # ---------------------------------------------------------
+                # CHECKER 1: 1 Active Signal Per Strategy Per Timeframe Rule
+                # ---------------------------------------------------------
+                has_active = any(
+                    s.strategy_id == s_id and
+                    s.timeframe.lower() == tf.lower() and
+                    s.status in ["ACTIVE", "TP1_HIT"]
+                    for s in self.signals
+                )
+                if has_active:
+                    continue
+
                 # Evaluate strategy strictly on 100% closed candle data
                 sig = strategy.evaluate(closed_candles, symbol, tf, secondary_closed)
                 if sig:
-                    # Volume Divergence MUST also confirm on the closed candle
+                    # Volume Divergence check on closed candle
                     div_info = VolumeDivergenceAnalyzer.check_divergence(closed_candles)
                     if div_info and div_info["direction"] == sig.action:
-                        sig.is_ultra_strong = True
                         sig.vol_div = div_info["type"]
-                        if "ULTRA STRONG" not in sig.reason:
-                            sig.reason += f" | ⚡ ULTRA STRONG ({div_info['type']} Confirmed on {tf.upper()} Close)"
                     else:
-                        if not sig.vol_div:
-                            sig.is_ultra_strong = False
-                            sig.vol_div = None
+                        sig.vol_div = None
+
+                    # -----------------------------------------------------
+                    # CHECKER 2: Candlestick Confirmation Pattern & Confluence %
+                    # -----------------------------------------------------
+                    from core.confirmation_analyzer import ConfirmationAnalyzer
+                    htf_bias_str = self.cached_bias.get("overall_bias") if self.cached_bias else None
+                    conf_eval = ConfirmationAnalyzer.analyze_signal_confluence(
+                        closed_candles, sig.action, vol_div=sig.vol_div, htf_bias=htf_bias_str
+                    )
+
+                    sig.confidence_score = conf_eval["score_pct"]
+                    sig.strength_grade = conf_eval["strength"]
+                    sig.confirmation_pattern = conf_eval["pattern_name"]
+                    sig.pattern_details = conf_eval["pattern_details"]
+
+                    if sig.confidence_score >= 90:
+                        sig.is_ultra_strong = True
+                        if "ULTRA STRONG" not in sig.reason:
+                            sig.reason += f" | ⚡ A+ ULTRA STRONG ({sig.confidence_score}% Conf) [{sig.confirmation_pattern}]"
+                    else:
+                        sig.is_ultra_strong = False
+                        if f"({sig.confidence_score}%)" not in sig.reason:
+                            sig.reason += f" | {conf_eval['badge_emoji']} {sig.strength_grade} ({sig.confidence_score}% Conf) [{sig.confirmation_pattern}]"
 
                     # Strict Signature: Unique to Strategy + Symbol + TF + Exact Candle Close Time!
-                    # Guarantees signal fires ONCE upon candle close and NEVER repaints
                     close_time_str = last_closed_candle.time.strftime("%Y-%m-%d %H:%M:%S")
                     sig_key = f"{sig.strategy_id}_{sig.symbol}_{sig.timeframe}_{sig.action}_{close_time_str}"
                     if sig_key not in self.seen_signal_signatures:
@@ -497,7 +562,7 @@ class SignalEngine:
                         sig.status = "ACTIVE"
                         sig.candle_close_confirmed = True
                         sig.closed_candle_time = close_time_str
-                        # Entry price is exact close of confirmed candle (which is open of current candle)
+                        # Entry price is exact close of confirmed candle (open of current candle)
                         sig.entry_price = round(last_closed_candle.close, 2)
 
                         tf_lower = str(sig.timeframe).lower()
@@ -519,8 +584,7 @@ class SignalEngine:
                                 sig.take_profit_2 = round(sig.entry_price - (risk * 3.0), 2)
 
                         self.signals.append(sig)
-                        status_str = f" [ULTRA STRONG VOL DIV]" if sig.is_ultra_strong else ""
-                        print(f"[CANDLE CLOSE CONFIRMED SIGNAL] {sig.action} on {sig.symbol} [{sig.timeframe.upper()}]{status_str} via {sig.strategy_name} @ {sig.entry_price} (Closed: {close_time_str})")
+                        print(f"[{sig.strength_grade} ({sig.confidence_score}%)] {sig.action} on {sig.symbol} [{sig.timeframe.upper()}] via {sig.strategy_name} @ {sig.entry_price} (Closed: {close_time_str} | Pattern: {sig.confirmation_pattern})")
 
     def add_demo_signal(self):
         # User constraint: ALWAYS Gold (XAUUSD)

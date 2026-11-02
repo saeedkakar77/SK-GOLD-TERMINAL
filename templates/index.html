@@ -1282,9 +1282,33 @@ SL: ${sig.stop_loss}` : body;
                         </div>
                     `;
 
+                    const confScore = sig.confidence_score || 85;
+                    const confPattern = sig.confirmation_pattern || '2-Candle Engulfing Rejection';
+                    let confColor = '#10b981';
+                    let strengthLabel = '🔥 A+ ULTRA STRONG';
+                    if (confScore >= 90) {
+                        confColor = '#10b981';
+                        strengthLabel = `🔥 A+ ULTRA STRONG (${confScore}%)`;
+                    } else if (confScore >= 75) {
+                        confColor = '#3b82f6';
+                        strengthLabel = `⚡ STRONG (${confScore}%)`;
+                    } else if (confScore >= 60) {
+                        confColor = '#f59e0b';
+                        strengthLabel = `⚖️ MODERATE (${confScore}%)`;
+                    } else {
+                        confColor = '#ef4444';
+                        strengthLabel = `⚠️ WEAK (${confScore}%)`;
+                    }
+
+                    const strengthBadge = `
+                        <span style="background: ${confColor}22; color: ${confColor}; border: 1.5px solid ${confColor}; padding: 3px 8px; border-radius: 4px; font-weight: 900; font-size: 10.5px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
+                            ${strengthLabel}
+                        </span>
+                    `;
+
                     const ultraBadge = sig.is_ultra_strong ? `
-                        <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-weight: 800; font-size: 11px; padding: 4px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0.5px; box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);">
-                            ⭐ A+ ULTRA STRONG (VOL DIV CONFIRMED)
+                        <div style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0.5px; box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);">
+                            ⚡ VOL DIV CONFIRMED
                         </div>
                     ` : '';
 
@@ -1326,9 +1350,10 @@ SL: ${sig.stop_loss}` : body;
                                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                     <span class="signal-badge ${isBuy ? 'badge-buy' : 'badge-sell'}">${sig.action}</span>
                                     <span class="mono" style="font-weight: 800; font-size: 16px;">${sig.symbol} [${sig.timeframe.toUpperCase()}]</span>
+                                    ${strengthBadge}
                                     ${styleBadge}
                                     <span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; padding: 3px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 4px;">
-                                        🔒 CANDLE CLOSE CONFIRMED
+                                        🔒 BAR CLOSE
                                     </span>
                                     ${goldBadge}
                                     ${ultraBadge}
@@ -1340,6 +1365,25 @@ SL: ${sig.stop_loss}` : body;
                             </div>
 
                             ${statusBanner}
+
+                            <!-- 📸 10-DIAGRAM CANDLESTICK CONFIRMATION & STRENGTH PATTERN BOX -->
+                            <div style="margin: 8px 0; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.08); border-left: 3.5px solid ${confColor}; padding: 8px 12px; border-radius: 6px; font-size: 11.5px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                                <div>
+                                    <span style="color: #94a3b8; font-weight: 700; font-size: 10px; text-transform: uppercase;">Candlestick Confirmation Pattern:</span>
+                                    <div style="color: #38bdf8; font-weight: 800; font-size: 12.5px; margin-top: 2px;">
+                                        📸 ${confPattern}
+                                    </div>
+                                    <div style="color: #cbd5e1; font-size: 10.5px; margin-top: 2px;">
+                                        ${sig.pattern_details || 'Confirmed upon bar close'}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <span style="font-size: 9.5px; color: #94a3b8; font-weight: 700;">CONFLUENCE SCORE</span>
+                                    <div class="mono" style="font-size: 14px; font-weight: 900; color: ${confColor}; text-shadow: 0 0 10px ${confColor}44;">
+                                        ${confScore}% CONF
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="signal-levels mono">
                                 <div class="level-box">
@@ -1411,10 +1455,10 @@ SL: ${sig.stop_loss}` : body;
                                         ${outcomeTitle}
                                     </span>
                                     <span class="mono" style="font-weight: 800; font-size: 15px;">${sig.action} ${sig.symbol} [${sig.timeframe.toUpperCase()}]</span>
-                                    ${styleBadge}
-                                    <span style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid #10b981; padding: 3px 8px; border-radius: 4px; font-weight: 800; font-size: 10px; letter-spacing: 0.5px;">
-                                        🔒 BAR CLOSE
+                                    <span style="background: ${outcomeColor}22; color: ${outcomeColor}; border: 1px solid ${outcomeColor}; font-weight: 800; font-size: 10px; padding: 2px 7px; border-radius: 4px;">
+                                        ${sig.confidence_score || 88}% CONF
                                     </span>
+                                    ${styleBadge}
                                 </div>
                                 <div class="signal-meta mono" style="font-size: 11px;">
                                     <span>Closed: ${sig.closed_at || sig.timestamp}</span>

@@ -41,6 +41,10 @@ class Signal:
     style: str = "intraday"                # "scalp" (M3-M15), "intraday" (M30-H4), "swing" (1D-1M)
     candle_close_confirmed: bool = True    # 100% strictly confirmed upon Candle Close (No Repaint)
     closed_candle_time: Optional[str] = None # Exact timestamp of the closed candle
+    strength_grade: str = "STRONG"         # "A+ ULTRA STRONG", "STRONG", "MODERATE", "WEAK"
+    confidence_score: int = 85             # Exact % score (e.g. 95%, 85%, 65%, 50%)
+    confirmation_pattern: Optional[str] = None # Candlestick Confirmation Pattern from picture
+    pattern_details: Optional[str] = None
 
 @dataclass
 class StrategyStatus:
