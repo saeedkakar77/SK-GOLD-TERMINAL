@@ -4,22 +4,31 @@ import json
 import webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
-# Protect stdout/stderr for windowless background execution and UTF-8 encoding
-if sys.stdout is None:
-    sys.stdout = open(os.devnull, "w")
-else:
-    try:
-        sys.stdout.reconfigure(encoding='utf-8', line_buffering=True)
-    except Exception:
-        pass
+# Safe stdout/stderr writer for 24/7 windowless background execution
+class SafeWriter:
+    def __init__(self, log_path=None):
+        self.log_file = None
+        if log_path:
+            try:
+                self.log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+            except Exception:
+                pass
+    def write(self, s):
+        if self.log_file:
+            try:
+                self.log_file.write(s)
+            except Exception:
+                pass
+    def flush(self):
+        if self.log_file:
+            try:
+                self.log_file.flush()
+            except Exception:
+                pass
 
-if sys.stderr is None:
-    sys.stderr = open(os.devnull, "w")
-else:
-    try:
-        sys.stderr.reconfigure(encoding='utf-8', line_buffering=True)
-    except Exception:
-        pass
+log_dir = os.path.dirname(__file__)
+sys.stdout = SafeWriter(os.path.join(log_dir, "server_stdout.log"))
+sys.stderr = SafeWriter(os.path.join(log_dir, "server_stderr.log"))
 
 import gzip
 from core.engine import SignalEngine
@@ -368,9 +377,11 @@ def main():
     while True:
         try:
             server.serve_forever()
-        except KeyboardInterrupt:
-            print("\nStopping server...", flush=True)
-            break
+        except (KeyboardInterrupt, SystemExit):
+            # In 24/7 background mode, ignore accidental launcher close interrupts
+            import time
+            time.sleep(1)
+            continue
         except Exception as e:
             print(f"[Server Warning] Handled socket error: {e}", flush=True)
             import time
