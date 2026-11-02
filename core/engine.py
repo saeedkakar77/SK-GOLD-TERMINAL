@@ -450,10 +450,21 @@ class SignalEngine:
             return
 
         candles = self.data_feed.get_candles(symbol, tf, count=180)
-        if not candles or len(candles) < 20:
+        if not candles or len(candles) < 25:
             return
 
+        # -----------------------------------------------------------------
+        # STRICT CANDLE CLOSE CONFIRMATION RULE (NO REPAINTING):
+        # The user strictly requires: "signals os waqat mile jub candle closing ho"
+        # candles[-1] is the in-progress, unclosed live candle.
+        # closed_candles = candles[:-1] contains only 100% completed, closed candles!
+        # The trigger candle is closed_candles[-1], which has officially closed.
+        # -----------------------------------------------------------------
+        closed_candles = candles[:-1]
+        last_closed_candle = closed_candles[-1]
+
         secondary_candles = self.data_feed.get_candles("XAGUSD", tf, count=180)
+        secondary_closed = secondary_candles[:-1] if (secondary_candles and len(secondary_candles) >= 20) else None
 
         with self.lock:
             self.last_check_time = datetime.datetime.now().strftime("%H:%M:%S")
@@ -462,23 +473,33 @@ class SignalEngine:
                 if not strategy.enabled:
                     continue
 
-                sig = strategy.evaluate(candles, symbol, tf, secondary_candles)
+                # Evaluate strategy strictly on 100% closed candle data
+                sig = strategy.evaluate(closed_candles, symbol, tf, secondary_closed)
                 if sig:
-                    div_info = VolumeDivergenceAnalyzer.check_divergence(candles)
+                    # Volume Divergence MUST also confirm on the closed candle
+                    div_info = VolumeDivergenceAnalyzer.check_divergence(closed_candles)
                     if div_info and div_info["direction"] == sig.action:
                         sig.is_ultra_strong = True
                         sig.vol_div = div_info["type"]
                         if "ULTRA STRONG" not in sig.reason:
-                            sig.reason += f" | ⭐ ULTRA STRONG ({div_info['type']} Confirmed on {tf.upper()})"
+                            sig.reason += f" | ⚡ ULTRA STRONG ({div_info['type']} Confirmed on {tf.upper()} Close)"
                     else:
                         if not sig.vol_div:
                             sig.is_ultra_strong = False
                             sig.vol_div = None
 
-                    sig_key = f"{sig.strategy_id}_{sig.symbol}_{sig.timeframe}_{sig.action}_{candles[-1].time}"
+                    # Strict Signature: Unique to Strategy + Symbol + TF + Exact Candle Close Time!
+                    # Guarantees signal fires ONCE upon candle close and NEVER repaints
+                    close_time_str = last_closed_candle.time.strftime("%Y-%m-%d %H:%M:%S")
+                    sig_key = f"{sig.strategy_id}_{sig.symbol}_{sig.timeframe}_{sig.action}_{close_time_str}"
                     if sig_key not in self.seen_signal_signatures:
                         self.seen_signal_signatures.add(sig_key)
                         sig.status = "ACTIVE"
+                        sig.candle_close_confirmed = True
+                        sig.closed_candle_time = close_time_str
+                        # Entry price is exact close of confirmed candle (which is open of current candle)
+                        sig.entry_price = round(last_closed_candle.close, 2)
+
                         tf_lower = str(sig.timeframe).lower()
                         if tf_lower in ["1m", "3m", "5m", "15m"]:
                             sig.style = "scalp"
@@ -486,9 +507,20 @@ class SignalEngine:
                             sig.style = "intraday"
                         else:
                             sig.style = "swing"
+
+                        # Ensure SL and TPs are strictly aligned with closed candle entry price
+                        risk = abs(sig.entry_price - sig.stop_loss)
+                        if risk > 0:
+                            if sig.action == "BUY":
+                                sig.take_profit_1 = round(sig.entry_price + (risk * 1.5), 2)
+                                sig.take_profit_2 = round(sig.entry_price + (risk * 3.0), 2)
+                            else:
+                                sig.take_profit_1 = round(sig.entry_price - (risk * 1.5), 2)
+                                sig.take_profit_2 = round(sig.entry_price - (risk * 3.0), 2)
+
                         self.signals.append(sig)
                         status_str = f" [ULTRA STRONG VOL DIV]" if sig.is_ultra_strong else ""
-                        print(f"[NEW GOLD SIGNAL] {sig.action} on {sig.symbol} [{sig.timeframe.upper()}]{status_str} via {sig.strategy_name} @ {sig.entry_price}")
+                        print(f"[CANDLE CLOSE CONFIRMED SIGNAL] {sig.action} on {sig.symbol} [{sig.timeframe.upper()}]{status_str} via {sig.strategy_name} @ {sig.entry_price} (Closed: {close_time_str})")
 
     def add_demo_signal(self):
         # User constraint: ALWAYS Gold (XAUUSD)

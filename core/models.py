@@ -18,7 +18,7 @@ class Signal:
     strategy_name: str
     symbol: str
     timeframe: str
-    action: str  # "BUY" or "SELL"
+    action: str                            # "BUY" or "SELL"
     entry_price: float
     stop_loss: float
     take_profit_1: float
@@ -39,6 +39,8 @@ class Signal:
     pnl_usd: Optional[float] = None        # USD dollar amount floating or realized
     live_status_note: Optional[str] = None # e.g. "🎯 TP 1 HIT (1:1.5 RR)! Running to TP 2"
     style: str = "intraday"                # "scalp" (M3-M15), "intraday" (M30-H4), "swing" (1D-1M)
+    candle_close_confirmed: bool = True    # 100% strictly confirmed upon Candle Close (No Repaint)
+    closed_candle_time: Optional[str] = None # Exact timestamp of the closed candle
 
 @dataclass
 class StrategyStatus:
