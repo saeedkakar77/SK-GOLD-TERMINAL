@@ -752,7 +752,7 @@
 
         function scrollToChartAndDismiss() {
             dismissTelegramPopup();
-            const el = document.getElementById('tradingview_gold_chart');
+            const el = document.getElementById('signalsFeedContainer') || document.querySelector('.main-layout');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
