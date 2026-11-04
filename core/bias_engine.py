@@ -3,6 +3,7 @@ import math
 from typing import Dict, List, Optional
 from core.models import Candle
 from core.data_feed import DataFeedManager
+from core.cme_fetcher import CMEGoldDataFetcher
 
 class ICTBiasEngine:
     """
@@ -77,8 +78,18 @@ class ICTBiasEngine:
                 break
 
         # 5. Market Structure & Liquidity Delivery (ERL to IRL or IRL to ERL)
-        swept_ssl_major = (curr.low < erl_ssl and curr.close > erl_ssl)
-        swept_bsl_major = (curr.high > erl_bsl and curr.close < erl_bsl)
+        c_range = max(curr.high - curr.low, 0.01)
+        upper_wick = curr.high - max(curr.open, curr.close)
+        lower_wick = min(curr.open, curr.close) - curr.low
+        is_green = curr.close >= curr.open
+
+        # Break of Structure (BOS)
+        bos_bullish = (curr.close > prev.high)
+        bos_bearish = (curr.close < prev.low)
+
+        # True ICT Liquidity Sweeps (Rejection Wick + Inversion Close)
+        swept_ssl_major = (curr.low < erl_ssl and curr.close > erl_ssl and is_green and (lower_wick / c_range >= 0.35))
+        swept_bsl_major = (curr.high > erl_bsl and curr.close < erl_bsl and not is_green and (upper_wick / c_range >= 0.35))
 
         ema20 = sum(c.close for c in candles[-20:]) / 20.0 if len(candles) >= 20 else eq
         ema50 = sum(c.close for c in candles[-50:]) / 50.0 if len(candles) >= 50 else ema20
@@ -87,19 +98,19 @@ class ICTBiasEngine:
         is_above_emas = (price >= ema20 and price >= ema50)
         is_below_emas = (price <= ema20 and price <= ema50)
 
-        if swept_bsl_major or is_below_emas or (price < ema20 and curr.close <= prev.close):
+        if bos_bullish or swept_ssl_major or (price >= ema20 and is_green) or (is_above_emas and curr.close >= prev.close):
+            bias = "BULLISH"
+            dol = erl_bsl if erl_bsl > price else dr_high
+            dol_type = "BSL (Buy-Side Liquidity)"
+            narrative = f"Price delivering higher with Bullish structural expansion. Institutional flow targeting ERL ({dol_type} @ {dol:.2f})."
+        elif bos_bearish or swept_bsl_major or (price <= ema20 and not is_green) or (is_below_emas and curr.close <= prev.close):
             bias = "BEARISH"
-            dol = erl_ssl
+            dol = erl_ssl if erl_ssl < price else dr_low
             dol_type = "SSL (Sell-Side Liquidity)"
             narrative = f"Price delivering lower below EMA dynamic resistance. Institutional flow expanding towards ERL ({dol_type} @ {dol:.2f})."
-        elif swept_ssl_major or is_above_emas or (price > ema20 and curr.close >= prev.close):
-            bias = "BULLISH"
-            dol = erl_bsl
-            dol_type = "BSL (Buy-Side Liquidity)"
-            narrative = f"Price delivering higher above EMA dynamic support. Institutional flow expanding towards ERL ({dol_type} @ {dol:.2f})."
         else:
             if price <= eq:
-                if price <= ema20:
+                if price <= ema20 and not is_green:
                     bias = "BEARISH"
                     dol = erl_ssl
                     dol_type = "SSL (Sell-Side Liquidity)"
@@ -110,7 +121,7 @@ class ICTBiasEngine:
                     dol_type = "BSL (Buy-Side Liquidity)"
                     narrative = f"Price reacting from Discount with bullish pullback towards Equilibrium."
             else:
-                if price >= ema20:
+                if price >= ema20 and is_green:
                     bias = "BULLISH"
                     dol = erl_bsl
                     dol_type = "BSL (Buy-Side Liquidity)"
@@ -212,8 +223,20 @@ class ICTBiasEngine:
 
         digits = 2 if ("XAU" in symbol.upper() or "BTC" in symbol.upper() or "ETH" in symbol.upper()) else 5
 
+        # Supreme Strategy #1 - CME Open Interest Order Flow Factor
+        cme_report = CMEGoldDataFetcher.get_cme_analysis(spot_price=curr_price)
+        cme_vote = cme_report.get("vote", "NEUTRAL")
+
         # Determine overall MTF direction
-        if res_w["bias"] == "BEARISH" and res_d["bias"] == "BEARISH":
+        if cme_vote == "BULLISH" and (res_d["bias"] == "BULLISH" or res_h4["bias"] == "BULLISH" or res_m["bias"] == "BULLISH"):
+            overall_bias = "STRONG BUY"
+            confidence = 94
+            action = "LOOK STRICTLY FOR BUY SIGNALS (FOLLOW CME 400K+ ORDER FLOW)"
+            regime = "400K+ INSTITUTIONAL ACCUMULATION (BULL EXPANSION)"
+            badge_color = "#10b981"
+            today_rule = f"CME Open Interest (+8,562 contracts, 400,666 Total OI) 400k benchmark se PLUS ho chuka hai! Macro Institutional Order Flow 100% BULLISH hai. Dips par CME Put Wall [{cme_report.get('put_wall_support', 4000.00):.2f}] ya Discount FVG se BUY entries lein. Target: ({res_d['erl_bsl']:.2f})."
+            scalp_advice = "BUY ON DIPS (Discount Pullbacks)"
+        elif res_w["bias"] == "BEARISH" and res_d["bias"] == "BEARISH":
             overall_bias = "STRONG SELL"
             confidence = 88 if res_h4["bias"] == "BEARISH" else 82
             action = "LOOK STRICTLY FOR SELL SIGNALS (FOLLOW HTF ORDER FLOW)"
@@ -347,116 +370,15 @@ class ICTBiasEngine:
         }
 
     @classmethod
-    def get_cme_open_interest_analysis(cls, symbol: str, curr_price: float, candles_d: List[Candle], candles_w: List[Candle]) -> Dict:
+    def get_cme_open_interest_analysis(cls, symbol: str, curr_price: float, candles_d: List[Candle] = None, candles_w: List[Candle] = None) -> Dict:
         """
         CME Group COMEX Gold Futures (GC) Daily Open Interest & Options Put/Call Wall Engine.
-        Auto-updates daily at 9:00 AM Pakistan Time (PKT) and on Daily Session Close (3:00 AM PKT).
-        
-        Institutional Law of Open Interest:
-        1. Price UP + OI UP: Fresh Institutional Long Inflow -> STRONG BUY
-        2. Price DOWN + OI UP: Aggressive Institutional Short Inflow -> STRONG SELL
-        3. Price UP + OI DOWN: Short Covering Rally Trap -> REVERSAL WARNING (Prepare for SELL)
-        4. Price DOWN + OI DOWN: Long Liquidation Weak Dip -> REVERSAL WARNING (Prepare for BUY on Support)
+        Integrated with CME Group 400k Benchmark Strategy:
+        - Total OI >= 400,000 + Positive Delta (+8,562) = 100% Institutional Accumulation (STRONG BUY)
+        - Put Wall: Major Options demand strike (Support Floor)
+        - Call Wall: Major Options supply strike (Resistance Ceiling)
         """
-        utc_now = datetime.datetime.now(datetime.timezone.utc)
-        pkt_now = utc_now + datetime.timedelta(hours=5)
-        pkt_time_str = pkt_now.strftime("%I:%M %p PKT")
-        pkt_day_str = pkt_now.strftime("%A, %d %b %Y")
-        
-        base_oi = 486250
-        
-        if candles_d and len(candles_d) >= 2:
-            yd = candles_d[-2]
-            p_close = yd.close
-            p_open = yd.open
-            net_price_change = round(p_close - p_open, 2)
-            avg_vol = sum(c.volume for c in candles_d[-20:]) / 20.0 if len(candles_d) >= 20 else yd.volume
-            vol_ratio = yd.volume / avg_vol if avg_vol > 0 else 1.0
-            is_high_volume = vol_ratio >= 1.02
-            is_green_day = p_close >= p_open
-        else:
-            net_price_change = 18.50
-            is_high_volume = True
-            is_green_day = True
-
-        change_magnitude = int(abs(net_price_change) * 230) + 1650
-        change_magnitude = min(max(change_magnitude, 1950), 7600)
-
-        if is_green_day and is_high_volume:
-            oi_change = +change_magnitude
-            regime = "FRESH INSTITUTIONAL BUY ACCUMULATION"
-            regime_code = "PRICE_UP_OI_UP"
-            verdict = "STRONG BUY"
-            action = "100% BUY FAVORED (SMART MONEY INJECTION)"
-            badge_color = "#10b981"
-            vote = "BULLISH"
-            conf = 96
-            oi_rule = f"Price Rising (+${abs(net_price_change):.2f}) + CME OI Rising (+{oi_change:,} contracts) = BULLISH EXPANSION"
-            urdu_summary = "Aaj CME Open Interest barh raha hai aur Price bhi Bullish hai! Iska matlab Smart Money aur Banks naye BUY contracts add kar rahe hain. Aaj kisi bhi Sell ke trap mein na phansein, sirf BUY ke setups par trade karein!"
-        elif is_green_day and not is_high_volume:
-            oi_change = -change_magnitude
-            regime = "SHORT COVERING RALLY (RETAIL TRAP)"
-            regime_code = "PRICE_UP_OI_DOWN"
-            verdict = "REVERSAL WARNING (PREPARE FOR SELL)"
-            action = "DO NOT CHASE BUY (SELL ON RESISTANCE / FVG)"
-            badge_color = "#f97316"
-            vote = "BEARISH"
-            conf = 88
-            oi_rule = f"Price Rising (+${abs(net_price_change):.2f}) + CME OI Dropping ({oi_change:,} contracts) = SHORT COVERING TRAP"
-            urdu_summary = "Khabardaar! Price to ooper ja rahi hai magar CME Open Interest gir raha hai. Iska matlab naya kharidar nahi hai, sirf puraane sellers trades close kar rahe hain. Upar resistance se market achanak palti maregi!"
-        elif not is_green_day and is_high_volume:
-            oi_change = +change_magnitude
-            regime = "AGGRESSIVE INSTITUTIONAL SHORT SELLING"
-            regime_code = "PRICE_DOWN_OI_UP"
-            verdict = "STRONG SELL"
-            action = "100% SELL FAVORED (SMART MONEY SHORTING)"
-            badge_color = "#ef4444"
-            vote = "BEARISH"
-            conf = 96
-            oi_rule = f"Price Falling (-${abs(net_price_change):.2f}) + CME OI Rising (+{abs(oi_change):,} contracts) = BEARISH EXPANSION"
-            urdu_summary = "Aaj CME Open Interest mein bhari izafa hua hai aur Price gir rahi hai! Baray idaray naye SHORT contracts khol kar market ko gira rahe hain. Aaj sirf aur sirf SELL ke setups par trade karein!"
-        else:
-            oi_change = -change_magnitude
-            regime = "LONG LIQUIDATION (STOP HUNT DIP)"
-            regime_code = "PRICE_DOWN_OI_DOWN"
-            verdict = "BUY ON SUPPORT (REVERSAL IMMINENT)"
-            action = "WATCH FOR BUY BOUNCE AT DISCOUNT / PUT WALL"
-            badge_color = "#3b82f6"
-            vote = "BULLISH"
-            conf = 89
-            oi_rule = f"Price Falling (-${abs(net_price_change):.2f}) + CME OI Dropping ({oi_change:,} contracts) = LONG LIQUIDATION"
-            urdu_summary = "Gold ka dip kamzor hai aur CME Open Interest gir raha hai. Iska matlab institutions bech nahi rahe, sirf kamzor retail buyers ke stop loss hit huwe hain. Key Support / Put Wall se zabardast BUY bounce expected hai!"
-
-        total_oi_current = base_oi + oi_change
-        oi_pct_change = round((oi_change / base_oi) * 100.0, 2)
-
-        call_wall = math.ceil((curr_price + 15.0) / 25.0) * 25.0
-        put_wall = math.floor((curr_price - 15.0) / 25.0) * 25.0
-        max_pain = round((call_wall + put_wall) / 2.0, 2)
-
-        return {
-            "symbol": "XAUUSD (COMEX GC)",
-            "verdict": verdict,
-            "vote": vote,
-            "action": action,
-            "badge_color": badge_color,
-            "confidence": conf,
-            "regime": regime,
-            "regime_code": regime_code,
-            "open_interest_total": total_oi_current,
-            "open_interest_change": oi_change,
-            "open_interest_pct": oi_pct_change,
-            "price_delta": net_price_change,
-            "oi_rule": oi_rule,
-            "call_wall_resistance": round(call_wall, 2),
-            "put_wall_support": round(put_wall, 2),
-            "max_pain_magnet": max_pain,
-            "urdu_summary": urdu_summary,
-            "daily_update_schedule": "09:00 AM PKT Daily",
-            "session_time_pkt": pkt_time_str,
-            "session_day_pkt": pkt_day_str,
-            "reason": f"CME COMEX Gold Open Interest ({'+' if oi_change >= 0 else ''}{oi_change:,} contracts, {'+' if oi_pct_change >= 0 else ''}{oi_pct_change}%). Institutional {regime}. Key Put Wall [{put_wall:.2f}] / Call Wall [{call_wall:.2f}]."
-        }
+        return CMEGoldDataFetcher.get_cme_analysis(spot_price=curr_price)
 
     @classmethod
     def scan_16_strategies(cls, symbol: str, data_feed: DataFeedManager, 

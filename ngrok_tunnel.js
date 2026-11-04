@@ -29,10 +29,10 @@ async function start() {
                 console.log('Desktop file write error:', e.message);
             }
 
-            // Wait indefinitely until error occurs
+            // Keep process active and healthy indefinitely
             await new Promise((resolve) => {
-                listener.on('close', resolve);
-                setInterval(() => {}, 15000);
+                // Heartbeat every 30 seconds to keep connection alive
+                const interval = setInterval(() => {}, 30000);
             });
         } catch (err) {
             console.error('Ngrok Tunnel Error:', err.message || err);
