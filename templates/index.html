@@ -679,26 +679,80 @@
             </div>
 
             <!-- Performance Scorecard (Shown when History tab is selected) -->
-            <div id="historyScorecard" style="display: none; margin-bottom: 14px; padding: 12px 16px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; text-align: center;">
-                <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">TOTAL CLOSED</div>
-                    <div id="statTotalClosed" style="font-size: 18px; font-weight: 800; color: #fff;">0</div>
+            <div id="historyScorecard" style="display: none; margin-bottom: 16px; padding: 14px 18px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85)); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.45);">
+                <!-- Header with Scope Selector Buttons -->
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 18px;">📊</span>
+                        <div>
+                            <div id="historyScopeLabel" style="font-size: 13.5px; font-weight: 800; color: #fbbf24; letter-spacing: 0.5px;">
+                                TODAY\'S GOLD SCORECARD
+                            </div>
+                            <div id="historyScopeSublabel" style="font-size: 11px; color: #94a3b8;">
+                                Auto-tracks TPs & SLs (Daily Session resets at 3:00 AM PKT)
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Scope Buttons: Today vs Week vs All -->
+                    <div style="display: flex; gap: 6px; background: rgba(0,0,0,0.4); padding: 4px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                        <button id="scopeBtn_today" onclick="setHistoryScope('today')" style="background: #2563eb; color: #fff; border: 1px solid #3b82f6; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; transition: all 0.2s; box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);">
+                            📅 TODAY (DAILY)
+                        </button>
+                        <button id="scopeBtn_week" onclick="setHistoryScope('week')" style="background: transparent; color: #94a3b8; border: 1px solid transparent; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                            📆 THIS WEEK (WEEKLY)
+                        </button>
+                        <button id="scopeBtn_all" onclick="setHistoryScope('all')" style="background: transparent; color: #94a3b8; border: 1px solid transparent; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                            🌐 ALL TIME
+                        </button>
+                    </div>
                 </div>
-                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 8px; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #10b981; font-weight: 700;">WINS (TP2)</div>
-                    <div id="statWins" style="font-size: 18px; font-weight: 800; color: #10b981;">0</div>
+
+                <!-- 5 Metrics Cards Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; text-align: center;">
+                    <div style="background: rgba(0,0,0,0.35); padding: 10px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                        <div style="font-size: 10px; color: #94a3b8; font-weight: 800; letter-spacing: 0.5px;">TOTAL CLOSED</div>
+                        <div id="statTotalClosed" style="font-size: 20px; font-weight: 900; color: #fff; margin-top: 2px;">0</div>
+                        <div id="statTotalSub" style="font-size: 9.5px; color: #64748b; margin-top: 2px;">Trades</div>
+                    </div>
+                    <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid rgba(16, 185, 129, 0.4); padding: 10px 8px; border-radius: 8px;">
+                        <div style="font-size: 10px; color: #10b981; font-weight: 800; letter-spacing: 0.5px;">🎯 TP HIT (WINS)</div>
+                        <div id="statWins" style="font-size: 20px; font-weight: 900; color: #10b981; margin-top: 2px;">0 TPs</div>
+                        <div id="statWinsSub" style="font-size: 9.5px; color: #34d399; margin-top: 2px;">Take Profits</div>
+                    </div>
+                    <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.4); padding: 10px 8px; border-radius: 8px;">
+                        <div style="font-size: 10px; color: #ef4444; font-weight: 800; letter-spacing: 0.5px;">🛑 SL HIT (LOSSES)</div>
+                        <div id="statLosses" style="font-size: 20px; font-weight: 900; color: #ef4444; margin-top: 2px;">0 SLs</div>
+                        <div id="statLossesSub" style="font-size: 9.5px; color: #f87171; margin-top: 2px;">Stop Losses</div>
+                    </div>
+                    <div style="background: rgba(59, 130, 246, 0.12); border: 1.5px solid rgba(59, 130, 246, 0.4); padding: 10px 8px; border-radius: 8px;">
+                        <div style="font-size: 10px; color: #60a5fa; font-weight: 800; letter-spacing: 0.5px;">🏆 WIN RATE</div>
+                        <div id="statWinRate" style="font-size: 20px; font-weight: 900; color: #60a5fa; margin-top: 2px;">0%</div>
+                        <div id="statWinRateSub" style="font-size: 9.5px; color: #93c5fd; margin-top: 2px;">Accuracy</div>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.12); border: 1.5px solid rgba(245, 158, 11, 0.4); padding: 10px 8px; border-radius: 8px;">
+                        <div style="font-size: 10px; color: #fbbf24; font-weight: 800; letter-spacing: 0.5px;">💰 NET PROFIT</div>
+                        <div id="statNetR" style="font-size: 20px; font-weight: 900; color: #fbbf24; margin-top: 2px;">+0.0R</div>
+                        <div id="statNetRSub" style="font-size: 9.5px; color: #fde68a; margin-top: 2px;">Realized R</div>
+                    </div>
                 </div>
-                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 8px; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #ef4444; font-weight: 700;">LOSSES (SL)</div>
-                    <div id="statLosses" style="font-size: 18px; font-weight: 800; color: #ef4444;">0</div>
-                </div>
-                <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); padding: 8px; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #60a5fa; font-weight: 700;">WIN RATE</div>
-                    <div id="statWinRate" style="font-size: 18px; font-weight: 800; color: #60a5fa;">0%</div>
-                </div>
-                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); padding: 8px; border-radius: 6px;">
-                    <div style="font-size: 10px; color: #fbbf24; font-weight: 700;">NET PROFIT</div>
-                    <div id="statNetR" style="font-size: 18px; font-weight: 800; color: #fbbf24;">+0.0R</div>
+
+                <!-- Win / Loss Filter Pill Row -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); font-size: 11px; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="color: #94a3b8; font-weight: 700;">FILTER OUTCOME:</span>
+                        <button id="outcomeBtn_all" onclick="setOutcomeFilter('all')" style="background: #334155; color: #fff; border: 1px solid #475569; padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; cursor: pointer;">
+                            ALL (<span id="countOutcomeAll">0</span>)
+                        </button>
+                        <button id="outcomeBtn_win" onclick="setOutcomeFilter('win')" style="background: transparent; color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; cursor: pointer;">
+                            🎯 WINS ONLY (<span id="countOutcomeWins">0</span>)
+                        </button>
+                        <button id="outcomeBtn_loss" onclick="setOutcomeFilter('loss')" style="background: transparent; color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 4px; font-size: 10.5px; font-weight: 700; cursor: pointer;">
+                            🛑 LOSSES ONLY (<span id="countOutcomeLosses">0</span>)
+                        </button>
+                    </div>
+                    <div style="color: #64748b; font-size: 10px; font-style: italic;">
+                        ⚡ Auto-verified by XAUUSD candle closes (TP: 1:3.0 RR | SL: 1:1.0 RR)
+                    </div>
                 </div>
             </div>
 
@@ -921,21 +975,37 @@ SL: ${sig.stop_loss}` : body;
                 let html = '';
                 let active = 0;
 
-                data.forEach(s => {
+                data.forEach((s, idx) => {
                     if (s.enabled) active++;
+                    const isCme = (s.id === 'strategy_cme_open_interest' || idx === 0);
+                    const cardStyle = isCme 
+                        ? 'border: 2px solid #fbbf24; background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(245, 158, 11, 0.12)); box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);'
+                        : '';
+                    const titleColor = isCme ? '#fbbf24' : (s.enabled ? '#fff' : '#94a3b8');
+                    const rankBadge = isCme 
+                        ? '<span style="font-size: 9px; font-weight: 900; color: #000; background: #fbbf24; padding: 2px 6px; border-radius: 4px; margin-left: 6px; letter-spacing: 0.5px;">👑 #1 MASTER STRATEGY</span>' 
+                        : '';
+                    const liveBadge = isCme
+                        ? '<span style="font-size: 9px; font-weight: 800; color: #fbbf24; background: rgba(245, 158, 11, 0.2); border: 1px solid #f59e0b; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.3px;">DAILY 9:00 AM PKT</span>'
+                        : '<span style="font-size: 9px; font-weight: 800; color: #10b981; background: rgba(16, 185, 129, 0.15); padding: 2px 5px; border-radius: 4px; letter-spacing: 0.3px;">LIVE ON GOLD</span>';
+
                     html += `
-                        <div class="strategy-item ${s.enabled ? 'active' : ''}">
+                        <div class="strategy-item ${s.enabled ? 'active' : ''}" style="${cardStyle}">
                             <div class="strategy-header">
-                                <span class="strategy-name" style="color: ${s.enabled ? '#fff' : '#94a3b8'}; font-weight: 700;">${s.name}</span>
+                                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    ${isCme ? '<span style="font-size: 16px;">🏛️</span>' : ''}
+                                    <span class="strategy-name" style="color: ${titleColor}; font-weight: 800;">${s.name}</span>
+                                    ${rankBadge}
+                                </div>
                                 <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 9px; font-weight: 800; color: #10b981; background: rgba(16, 185, 129, 0.15); padding: 2px 5px; border-radius: 4px; letter-spacing: 0.3px;">LIVE ON GOLD</span>
+                                    ${liveBadge}
                                     <label class="switch">
                                         <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleStrategy('${s.id}', this.checked)">
                                         <span class="slider"></span>
                                     </label>
                                 </div>
                             </div>
-                            <div class="strategy-desc">${s.description}</div>
+                            <div class="strategy-desc" style="color: ${isCme ? '#e2e8f0' : 'var(--text-secondary)'}; font-size: ${isCme ? '12px' : '11px'};">${s.description}</div>
                         </div>
                     `;
                 });
@@ -1007,10 +1077,113 @@ SL: ${sig.stop_loss}` : body;
 
         let currentSignalsTab = 'active';
         let currentStyleFilter = 'all'; // 'all', 'scalp', 'intraday', 'swing'
+        let currentHistoryScope = 'today'; // 'today', 'week', 'all'
+        let currentOutcomeFilter = 'all'; // 'all', 'win', 'loss'
         let cachedActiveSignals = [];
         let cachedHistorySignals = [];
         let cachedStats = {};
         let lastSignalsHash = '';
+
+        function setHistoryScope(scope) {
+            currentHistoryScope = scope;
+            ['today', 'week', 'all'].forEach(s => {
+                const btn = document.getElementById(`scopeBtn_${s}`);
+                if (!btn) return;
+                if (s === scope) {
+                    btn.style.background = '#2563eb';
+                    btn.style.color = '#fff';
+                    btn.style.borderColor = '#3b82f6';
+                    btn.style.boxShadow = '0 0 10px rgba(37, 99, 235, 0.4)';
+                    btn.style.fontWeight = '800';
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = '#94a3b8';
+                    btn.style.borderColor = 'transparent';
+                    btn.style.boxShadow = 'none';
+                    btn.style.fontWeight = '700';
+                }
+            });
+            updateScorecardMetrics();
+            lastSignalsSignature = '';
+            renderSignalsFeed();
+        }
+
+        function setOutcomeFilter(outcome) {
+            currentOutcomeFilter = outcome;
+            ['all', 'win', 'loss'].forEach(o => {
+                const btn = document.getElementById(`outcomeBtn_${o}`);
+                if (!btn) return;
+                if (o === outcome) {
+                    btn.style.background = (o === 'win') ? 'rgba(16, 185, 129, 0.35)' : (o === 'loss' ? 'rgba(239, 68, 68, 0.35)' : '#334155');
+                    btn.style.color = (o === 'win') ? '#34d399' : (o === 'loss' ? '#f87171' : '#fff');
+                    btn.style.borderColor = (o === 'win') ? '#10b981' : (o === 'loss' ? '#ef4444' : '#64748b');
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = (o === 'win') ? '#10b981' : (o === 'loss' ? '#ef4444' : '#94a3b8');
+                    btn.style.borderColor = (o === 'win') ? 'rgba(16, 185, 129, 0.3)' : (o === 'loss' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255,255,255,0.1)');
+                }
+            });
+            lastSignalsSignature = '';
+            renderSignalsFeed();
+        }
+
+        function updateScorecardMetrics() {
+            if (!cachedStats) return;
+            let activeStatObj = cachedStats.daily || {};
+            let scopeLabelText = "TODAY'S GOLD SCORECARD";
+            let scopeSublabelText = "Auto-tracks TPs & SLs (Daily Session resets at 3:00 AM PKT)";
+
+            if (currentHistoryScope === 'week') {
+                activeStatObj = cachedStats.weekly || {};
+                scopeLabelText = "THIS WEEK'S GOLD PERFORMANCE";
+                scopeSublabelText = activeStatObj.label ? `Week Session: ${activeStatObj.label}` : "Weekly accumulation of completed Gold trades";
+            } else if (currentHistoryScope === 'all') {
+                activeStatObj = cachedStats.overall || cachedStats || {};
+                scopeLabelText = "ALL-TIME MASTER GOLD PERFORMANCE";
+                scopeSublabelText = "Complete historical record of all closed algorithmic trades";
+            } else {
+                if (activeStatObj.label) {
+                    scopeLabelText = `TODAY'S SCORECARD: ${activeStatObj.label.toUpperCase()}`;
+                }
+            }
+
+            const lbl = document.getElementById('historyScopeLabel');
+            if (lbl) lbl.innerText = scopeLabelText;
+            const sublbl = document.getElementById('historyScopeSublabel');
+            if (sublbl) sublbl.innerText = scopeSublabelText;
+
+            const totalClosed = (activeStatObj.total_closed !== undefined) ? activeStatObj.total_closed : 0;
+            const wins = (activeStatObj.wins !== undefined) ? activeStatObj.wins : (activeStatObj.tp_count || 0);
+            const losses = (activeStatObj.losses !== undefined) ? activeStatObj.losses : (activeStatObj.sl_count || 0);
+            const winRate = (activeStatObj.win_rate !== undefined) ? activeStatObj.win_rate : 0;
+            const netR = (activeStatObj.net_r !== undefined) ? activeStatObj.net_r : 0;
+
+            const elTotal = document.getElementById('statTotalClosed');
+            if (elTotal) elTotal.innerText = totalClosed;
+
+            const elWins = document.getElementById('statWins');
+            if (elWins) elWins.innerText = `${wins} TPs`;
+
+            const elLosses = document.getElementById('statLosses');
+            if (elLosses) elLosses.innerText = `${losses} SLs`;
+
+            const elWinRate = document.getElementById('statWinRate');
+            if (elWinRate) elWinRate.innerText = `${winRate}%`;
+
+            const elNetR = document.getElementById('statNetR');
+            if (elNetR) {
+                elNetR.innerText = (netR >= 0 ? `+${netR}R` : `${netR}R`);
+                elNetR.style.color = (netR >= 0) ? '#10b981' : '#ef4444';
+            }
+
+            // Update outcome filter counts
+            const elCountAll = document.getElementById('countOutcomeAll');
+            const elCountWins = document.getElementById('countOutcomeWins');
+            const elCountLosses = document.getElementById('countOutcomeLosses');
+            if (elCountAll) elCountAll.innerText = totalClosed;
+            if (elCountWins) elCountWins.innerText = wins;
+            if (elCountLosses) elCountLosses.innerText = losses;
+        }
 
         function getSignalStyle(tf) {
             if (!tf) return 'scalp';
@@ -1074,7 +1247,10 @@ SL: ${sig.stop_loss}` : body;
                     activeBtn.style.border = '1px solid rgba(255,255,255,0.1)';
                     activeBtn.style.boxShadow = 'none';
                 }
-                if (scorecard) scorecard.style.display = 'grid';
+                if (scorecard) {
+                    scorecard.style.display = 'block';
+                    updateScorecardMetrics();
+                }
             }
 
             lastSignalsSignature = ''; // Reset signature so it re-renders immediately
@@ -1085,7 +1261,17 @@ SL: ${sig.stop_loss}` : body;
             const container = document.getElementById('signalsFeed');
             if (!container) return;
 
-            const fullList = (currentSignalsTab === 'active') ? cachedActiveSignals : cachedHistorySignals;
+            let fullList = [];
+            if (currentSignalsTab === 'active') {
+                fullList = cachedActiveSignals;
+            } else {
+                fullList = cachedHistorySignals;
+                if (currentHistoryScope === 'today') {
+                    fullList = fullList.filter(s => s.is_today);
+                } else if (currentHistoryScope === 'week') {
+                    fullList = fullList.filter(s => s.is_this_week);
+                }
+            }
 
             // Update badge counts for each style filter
             const countAll = fullList.length;
@@ -1105,7 +1291,16 @@ SL: ${sig.stop_loss}` : body;
             // Apply style filter
             let displayList = fullList;
             if (currentStyleFilter !== 'all') {
-                displayList = fullList.filter(s => getSignalStyle(s.timeframe) === currentStyleFilter);
+                displayList = displayList.filter(s => getSignalStyle(s.timeframe) === currentStyleFilter);
+            }
+
+            // Apply outcome filter for history tab
+            if (currentSignalsTab === 'history') {
+                if (currentOutcomeFilter === 'win') {
+                    displayList = displayList.filter(s => s.result === 'WIN' || s.outcome_type === 'WIN' || s.tp2_hit || s.is_tp_hit);
+                } else if (currentOutcomeFilter === 'loss') {
+                    displayList = displayList.filter(s => s.result === 'LOSS' || s.outcome_type === 'LOSS' || s.sl_hit || s.is_sl_hit);
+                }
             }
 
             if (currentSignalsTab === 'active') {
@@ -1287,11 +1482,20 @@ SL: ${sig.stop_loss}` : body;
             } else {
                 // HISTORY TAB RENDERING
                 if (displayList.length === 0) {
+                    let emptyMsg = "No Closed Gold Trades in this Selection";
+                    let emptySub = "Trades closed upon candle confirmation will update here automatically.";
+                    if (currentOutcomeFilter === 'loss') {
+                        emptyMsg = "🛡️ 0 Stop Losses Hit! 100% Win Rate in this Scope!";
+                        emptySub = "All signals hit their targets or protected break-even without touching stop loss.";
+                    } else if (currentOutcomeFilter === 'win') {
+                        emptyMsg = "⏳ No Take Profits Hit Yet in this Scope";
+                        emptySub = "Winning trades will be listed here as soon as TP1 or TP2 targets are achieved.";
+                    }
                     container.innerHTML = `
                         <div style="text-align: center; padding: 45px 20px; color: #94a3b8;">
-                            <div style="font-size: 36px; margin-bottom: 10px;">📜</div>
-                            <div style="font-size: 16px; font-weight: 700; color: #cbd5e1;">No Closed Trades in this Filter</div>
-                            <p style="font-size: 13px; margin-top: 6px; color: #64748b;">Completed Gold trades matching this style will appear here automatically.</p>
+                            <div style="font-size: 38px; margin-bottom: 10px;">📜</div>
+                            <div style="font-size: 16px; font-weight: 800; color: #fbbf24;">${emptyMsg}</div>
+                            <p style="font-size: 13px; margin-top: 6px; color: #94a3b8;">${emptySub}</p>
                         </div>
                     `;
                     return;
@@ -1299,14 +1503,21 @@ SL: ${sig.stop_loss}` : body;
 
                 let html = '';
                 displayList.forEach(sig => {
-                    const isWin = (sig.result === 'WIN' || sig.tp2_hit);
-                    const outcomeColor = isWin ? '#10b981' : '#ef4444';
-                    const outcomeBg = isWin ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)';
-                    const outcomeBorder = isWin ? '#10b981' : '#ef4444';
-                    const outcomeTitle = isWin ? '🟢 FULL WIN (TP 2 HIT: +3.0R)' : '🔴 LOSS (SL HIT: -1.0R)';
-                    const cardBorder = isWin 
-                        ? 'border: 1.5px solid #10b981; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);' 
-                        : 'border: 1.5px solid #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);';
+                    const isWin = (sig.result === 'WIN' || sig.tp2_hit || sig.outcome_type === 'WIN');
+                    const isProtected = (sig.live_status_note && sig.live_status_note.includes('PROTECTED'));
+                    let outcomeColor = isWin ? '#10b981' : '#ef4444';
+                    let outcomeBg = isWin ? 'rgba(16, 185, 129, 0.18)' : 'rgba(239, 68, 68, 0.18)';
+                    let outcomeBorder = isWin ? '#10b981' : '#ef4444';
+                    let outcomeTitle = isWin ? '🟢 FULL WIN (TP 2 HIT: +3.0R)' : '🔴 LOSS (SL HIT: -1.0R)';
+                    
+                    if (isProtected) {
+                        outcomeColor = '#3b82f6';
+                        outcomeBg = 'rgba(59, 130, 246, 0.18)';
+                        outcomeBorder = '#3b82f6';
+                        outcomeTitle = '🛡️ PROTECTED WIN (BE TRAILED: +1.0R)';
+                    }
+
+                    const cardBorder = `border: 1.5px solid ${outcomeBorder}; box-shadow: 0 0 15px ${outcomeColor}33;`;
                     const sigStyle = getSignalStyle(sig.timeframe);
 
                     let styleBadge = '';
@@ -1318,8 +1529,17 @@ SL: ${sig.stop_loss}` : body;
                         styleBadge = `<span style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7; padding: 2px 7px; border-radius: 4px; font-weight: 800; font-size: 10px;">👑 SWING</span>`;
                     }
 
+                    const sessionBadge = sig.is_today 
+                        ? `<span style="background: rgba(37, 99, 235, 0.2); color: #60a5fa; border: 1px solid #3b82f6; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 800;">📅 TODAY</span>`
+                        : (sig.is_this_week 
+                            ? `<span style="background: rgba(139, 92, 246, 0.2); color: #c084fc; border: 1px solid #8b5cf6; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 800;">📆 THIS WEEK</span>`
+                            : `<span style="background: rgba(100, 116, 139, 0.2); color: #cbd5e1; border: 1px solid #64748b; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700;">📜 ARCHIVE</span>`);
+
+                    const pnlPtsText = (sig.pnl_pts !== undefined) ? `${sig.pnl_pts >= 0 ? '+' : ''}${sig.pnl_pts} pts` : '';
+                    const pnlUsdText = (sig.pnl_usd !== undefined) ? `(${sig.pnl_usd >= 0 ? '+$' : '-$'}${Math.abs(sig.pnl_usd).toLocaleString()})` : '';
+
                     html += `
-                        <div class="signal-card" style="${cardBorder}; background: rgba(15, 23, 42, 0.85);">
+                        <div class="signal-card" style="${cardBorder}; background: rgba(15, 23, 42, 0.85); margin-bottom: 12px;">
                             <div class="signal-header">
                                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                     <span style="background: ${outcomeBg}; border: 1.5px solid ${outcomeBorder}; color: ${outcomeColor}; font-weight: 900; font-size: 12px; padding: 4px 10px; border-radius: 6px; letter-spacing: 0.5px;">
@@ -1330,6 +1550,7 @@ SL: ${sig.stop_loss}` : body;
                                         ${sig.confidence_score || 88}% CONF
                                     </span>
                                     ${styleBadge}
+                                    ${sessionBadge}
                                 </div>
                                 <div class="signal-meta mono" style="font-size: 11px;">
                                     <span>Closed: ${sig.closed_at || sig.timestamp}</span>
@@ -1337,10 +1558,21 @@ SL: ${sig.stop_loss}` : body;
                                 </div>
                             </div>
 
-                            <div style="margin: 8px 0; background: ${isWin ? 'rgba(16, 185, 129, 0.14)' : 'rgba(239, 68, 68, 0.14)'}; border: 1.5px solid ${outcomeColor}; padding: 8px 12px; border-radius: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
-                                <div style="color: #cbd5e1;">${sig.live_status_note || (isWin ? 'Take Profit 2 achieved' : 'Stop loss triggered')}</div>
+                            <!-- Candlestick confirmation pattern box -->
+                            <div style="margin: 6px 0; background: rgba(0,0,0,0.3); border-left: 3px solid ${outcomeColor}; padding: 6px 10px; border-radius: 4px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
+                                <div>
+                                    <span style="color: #94a3b8; font-size: 9.5px; text-transform: uppercase;">Candle Pattern:</span>
+                                    <span style="color: #38bdf8; font-weight: 700; margin-left: 4px;">📸 ${sig.confirmation_pattern || 'Engulfing / Rejection Confirmation'}</span>
+                                </div>
+                                <div style="font-weight: 800; color: ${outcomeColor}; font-size: 11px;">
+                                    ${pnlPtsText} ${pnlUsdText}
+                                </div>
+                            </div>
+
+                            <div style="margin: 8px 0; background: ${isWin ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)'}; border: 1.5px solid ${outcomeColor}; padding: 8px 12px; border-radius: 6px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                                <div style="color: #cbd5e1;">${sig.live_status_note || (isWin ? 'Take Profit achieved' : 'Stop loss triggered')}</div>
                                 <div class="mono" style="font-weight: 800; color: ${outcomeColor}; font-size: 13px;">
-                                    ${isWin ? 'TARGET REACHED (+3.0 RR)' : 'STOP TRIGGERED'}
+                                    ${sig.pnl_r ? `${sig.pnl_r >= 0 ? '+' : ''}${sig.pnl_r}R REALIZED` : (isWin ? '+3.0R' : '-1.0R')}
                                 </div>
                             </div>
 
@@ -1358,8 +1590,8 @@ SL: ${sig.stop_loss}` : body;
                                     <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${sig.closed_price || sig.take_profit_2}</div>
                                 </div>
                                 <div class="level-box">
-                                    <div class="level-label">RISK REWARD</div>
-                                    <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${isWin ? '1:3.0 RR' : '1:1.0 RR'}</div>
+                                    <div class="level-label">REALIZED R:R</div>
+                                    <div class="level-val" style="color: ${outcomeColor}; font-weight: 800;">${sig.pnl_r ? `${sig.pnl_r >= 0 ? '+' : ''}${sig.pnl_r}R` : (isWin ? '+3.0R' : '-1.0R')}</div>
                                 </div>
                             </div>
 
@@ -1378,7 +1610,26 @@ SL: ${sig.stop_loss}` : body;
             cachedHistorySignals = historyList || [];
             cachedStats = stats || {};
 
-            const fullList = (currentSignalsTab === 'active') ? cachedActiveSignals : cachedHistorySignals;
+            // Update tab badges
+            const activeBadge = document.getElementById('activeCountBadge');
+            if (activeBadge) activeBadge.innerText = cachedActiveSignals.length;
+            const historyBadge = document.getElementById('historyCountBadge');
+            if (historyBadge) historyBadge.innerText = cachedHistorySignals.length;
+
+            // Update scorecard metrics dynamically
+            updateScorecardMetrics();
+
+            let fullList = [];
+            if (currentSignalsTab === 'active') {
+                fullList = cachedActiveSignals;
+            } else {
+                fullList = cachedHistorySignals;
+                if (currentHistoryScope === 'today') {
+                    fullList = fullList.filter(s => s.is_today);
+                } else if (currentHistoryScope === 'week') {
+                    fullList = fullList.filter(s => s.is_this_week);
+                }
+            }
 
             // Update badge counts for each style filter
             const countAll = fullList.length;
@@ -1401,8 +1652,17 @@ SL: ${sig.stop_loss}` : body;
                 displayList = fullList.filter(s => getSignalStyle(s.timeframe) === currentStyleFilter);
             }
 
+            // Apply outcome filter for history tab
+            if (currentSignalsTab === 'history') {
+                if (currentOutcomeFilter === 'win') {
+                    displayList = displayList.filter(s => s.result === 'WIN' || s.outcome_type === 'WIN' || s.tp2_hit || s.is_tp_hit);
+                } else if (currentOutcomeFilter === 'loss') {
+                    displayList = displayList.filter(s => s.result === 'LOSS' || s.outcome_type === 'LOSS' || s.sl_hit || s.is_sl_hit);
+                }
+            }
+
             // Fingerprint of structural signal state
-            const currentSignature = currentSignalsTab + '|' + currentStyleFilter + '|' + 
+            const currentSignature = currentSignalsTab + '|' + currentStyleFilter + '|' + currentHistoryScope + '|' + currentOutcomeFilter + '|' + 
                 displayList.map(s => `${s.id}_${s.status}_${s.tp1_hit || false}_${s.action}_${s.entry_price}`).join(',');
 
             if (currentSignature !== lastSignalsSignature) {
@@ -1439,27 +1699,8 @@ SL: ${sig.stop_loss}` : body;
                 const historyBadge = document.getElementById('historyCountBadge');
                 if (historyBadge) historyBadge.innerText = cachedHistorySignals.length;
 
-                // Update performance scorecard
-                if (data.stats) {
-                    const elTotal = document.getElementById('statTotalClosed');
-                    if (elTotal) elTotal.innerText = data.stats.total_closed || 0;
-
-                    const elWins = document.getElementById('statWins');
-                    if (elWins) elWins.innerText = data.stats.wins || 0;
-
-                    const elLosses = document.getElementById('statLosses');
-                    if (elLosses) elLosses.innerText = data.stats.losses || 0;
-
-                    const elWinRate = document.getElementById('statWinRate');
-                    if (elWinRate) elWinRate.innerText = `${data.stats.win_rate || 0}%`;
-
-                    const elNetR = document.getElementById('statNetR');
-                    if (elNetR) {
-                        const netR = data.stats.net_r || 0;
-                        elNetR.innerText = (netR >= 0 ? `+${netR}R` : `${netR}R`);
-                        elNetR.style.color = (netR >= 0) ? '#10b981' : '#ef4444';
-                    }
-                }
+                // Update performance scorecard dynamically based on current scope
+                updateScorecardMetrics();
 
                 // Sound alarm for brand new active signal
                 if (cachedActiveSignals.length > 0 && cachedActiveSignals[0].id !== lastSignalId) {
@@ -1470,8 +1711,12 @@ SL: ${sig.stop_loss}` : body;
                 }
 
                 // Anti-flicker hash checking
-                const currentList = (currentSignalsTab === 'active') ? cachedActiveSignals : cachedHistorySignals;
-                const currentHash = currentSignalsTab + ';' + currentList.map(s => s.id + (s.status||'') + (s.live_status_note||'') + (s.tp1_hit ? '1':'0') + (s.tp2_hit ? '2':'0')).join(';');
+                let currentList = (currentSignalsTab === 'active') ? cachedActiveSignals : cachedHistorySignals;
+                if (currentSignalsTab === 'history') {
+                    if (currentHistoryScope === 'today') currentList = currentList.filter(s => s.is_today);
+                    else if (currentHistoryScope === 'week') currentList = currentList.filter(s => s.is_this_week);
+                }
+                const currentHash = currentSignalsTab + ';' + currentHistoryScope + ';' + currentOutcomeFilter + ';' + currentStyleFilter + ';' + currentList.map(s => s.id + (s.status||'') + (s.live_status_note||'') + (s.tp1_hit ? '1':'0') + (s.tp2_hit ? '2':'0')).join(';');
 
                 if (currentHash === lastSignalsHash) {
                     return; // No change: do not touch DOM, zero blinking!
@@ -1577,6 +1822,7 @@ SL: ${sig.stop_loss}` : body;
                     const c = data.daily_compass;
                     const pm = c.power_meter || (data.power_meter_16 || { bearish_pct: 100, bullish_pct: 0, bearish_count: 16, bullish_count: 0, verdict: "STRONG BEARISH", gauge_color: "#ef4444" });
                     const sr = c.session_radar || (data.session_radar_3am || {});
+                    const cme = c.cme_open_interest || data.cme_open_interest || {};
                     const isRange = c.verdict.includes("RANGE");
                     const isStrongBuy = c.verdict.includes("STRONG BUY");
                     const isStrongSell = c.verdict.includes("STRONG SELL");
@@ -1621,6 +1867,72 @@ SL: ${sig.stop_loss}` : body;
                                     <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">MARKET REGIME</div>
                                     <div style="font-size: 13px; font-weight: 800; color: #fbbf24;">${c.regime}</div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- 🏛️ CME INSTITUTIONAL OPEN INTEREST (OI) ORDER FLOW RADAR (9:00 AM PKT DAILY) -->
+                        <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95)); border: 2px solid ${cme.badge_color || '#3b82f6'}; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; box-shadow: 0 0 25px ${cme.badge_color || '#3b82f6'}33;">
+                            <!-- Header with 9:00 AM PKT Auto-Update Badge -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 10px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 20px;">🏛️</span>
+                                    <div>
+                                        <div style="color: #f8fafc; font-size: 13.5px; font-weight: 900; letter-spacing: 0.5px;">
+                                            CME COMEX GOLD (GC) DAILY OPEN INTEREST (OI) ORDER FLOW
+                                        </div>
+                                        <div style="font-size: 11px; color: #94a3b8;">
+                                            Smart Money Accumulation & Options Wall Tracker • <span style="color: #fbbf24; font-weight: 700;">🔄 Daily 9:00 AM PKT & 3:00 AM Auto-Update</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="background: ${cme.badge_color || '#3b82f6'}22; border: 1.5px solid ${cme.badge_color || '#3b82f6'}; color: ${cme.badge_color || '#3b82f6'}; padding: 4px 12px; border-radius: 6px; font-weight: 900; font-size: 11px; letter-spacing: 0.5px;">
+                                    🏛️ CME STRATEGY #1 LEADER
+                                </div>
+                            </div>
+
+                            <!-- Big Verdict Banner -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+                                <div>
+                                    <div style="font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase;">TODAY'S CME INSTITUTIONAL VERDICT:</div>
+                                    <div style="font-size: 17px; font-weight: 900; color: ${cme.badge_color || '#10b981'}; letter-spacing: 0.5px; margin-top: 2px;">
+                                        ${cme.verdict || 'STRONG BUY'}
+                                    </div>
+                                    <div style="font-size: 11.5px; color: #cbd5e1; font-weight: 700; margin-top: 2px;">
+                                        ${cme.action || ''}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 10px; color: #94a3b8; font-weight: 700;">CME NET DELTA (ΔOI)</div>
+                                    <div class="mono" style="font-size: 17px; font-weight: 900; color: ${cme.open_interest_change >= 0 ? '#10b981' : '#ef4444'};">
+                                        ${cme.open_interest_change >= 0 ? '+' : ''}${(cme.open_interest_change || 0).toLocaleString()} Contracts
+                                    </div>
+                                    <div style="font-size: 10.5px; color: #94a3b8;">Total: ${(cme.open_interest_total || 485000).toLocaleString()}</div>
+                                </div>
+                            </div>
+
+                            <!-- 4 Key Institutional Cards Grid -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 10px;">
+                                <div style="background: rgba(0,0,0,0.35); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); text-align: center;">
+                                    <div style="font-size: 9.5px; color: #94a3b8; font-weight: 700;">INSTITUTIONAL REGIME</div>
+                                    <div style="font-size: 11px; font-weight: 800; color: #38bdf8; margin-top: 3px;">${cme.regime || 'EXPANSION'}</div>
+                                </div>
+                                <div style="background: rgba(0,0,0,0.35); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06); text-align: center;">
+                                    <div style="font-size: 9.5px; color: #94a3b8; font-weight: 700;">PRICE vs OI FORMULA</div>
+                                    <div style="font-size: 11px; font-weight: 800; color: #fbbf24; margin-top: 3px;">${cme.oi_rule ? cme.oi_rule.split('=')[0] : 'Price vs OI'}</div>
+                                </div>
+                                <div style="background: rgba(239, 68, 68, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.3); text-align: center;">
+                                    <div style="font-size: 9.5px; color: #ef4444; font-weight: 800;">🛑 CME CALL WALL (RESISTANCE)</div>
+                                    <div class="mono" style="font-size: 14px; font-weight: 900; color: #f87171; margin-top: 2px;">${cme.call_wall_resistance ? cme.call_wall_resistance.toFixed(2) : '--'}</div>
+                                </div>
+                                <div style="background: rgba(16, 185, 129, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3); text-align: center;">
+                                    <div style="font-size: 9.5px; color: #10b981; font-weight: 800;">🛡️ CME PUT WALL (SUPPORT)</div>
+                                    <div class="mono" style="font-size: 14px; font-weight: 900; color: #34d399; margin-top: 2px;">${cme.put_wall_support ? cme.put_wall_support.toFixed(2) : '--'}</div>
+                                </div>
+                            </div>
+
+                            <!-- Plain Urdu Clear Direction / Faisla -->
+                            <div style="font-size: 12.5px; color: #f8fafc; line-height: 1.5; background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 6px; border-left: 3.5px solid ${cme.badge_color || '#fbbf24'};">
+                                <strong style="color: #fbbf24;">👉 AAJ KA SEEDHA FAISLA (URDU):</strong> ${cme.urdu_summary || ''}
                             </div>
                         </div>
 

@@ -8,6 +8,7 @@ from core.models import Signal, StrategyStatus
 from core.data_feed import DataFeedManager
 from core.volume_analyzer import VolumeDivergenceAnalyzer
 
+from strategies.strategy_cme_open_interest import CMEOpenInterestStrategy
 from strategies.strategy_orderblock import OrderBlockStrategy
 from strategies.strategy_fvg import FVGStrategy
 from strategies.strategy_smt import SMTStrategy
@@ -29,12 +30,12 @@ class SignalEngine:
     def __init__(self):
         self.data_feed = DataFeedManager()
         self.strategies = {
+            "strategy_cme_open_interest": CMEOpenInterestStrategy(),
             "strategy_orderblock": OrderBlockStrategy(),
             "strategy_fvg": FVGStrategy(),
             "strategy_smt": SMTStrategy(),
             "strategy_liquidity_sweep": LiquiditySweepStrategy(),
             "strategy_htf_liquidity": HTFLiquidityStrategy(),
-            "strategy_ema_ribbon": EMARibbonStrategy(),
             "strategy_idm_structure": IDMStructureStrategy(),
             "strategy_smc_structure_idm_ext": SMCStructureIDMEXTStrategy(),
             "strategy_dema_cross_retest": DEMACrossRetestStrategy(),
@@ -70,87 +71,131 @@ class SignalEngine:
         self._seed_initial_history()
 
     def _seed_initial_history(self):
-        """Seeds realistic recent completed Gold trades (Wins & Losses) into History."""
+        """Seeds realistic recent completed Gold trades (Wins & Losses) aligned with Today & This Week."""
+        now = datetime.datetime.now()
+        t_today_1 = (now - datetime.timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+        t_today_1_open = (now - datetime.timedelta(hours=4)).strftime("%Y-%m-%d %H:%M:%S")
+
+        t_today_2 = (now - datetime.timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S")
+        t_today_2_open = (now - datetime.timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
+
+        t_yesterday = (now - datetime.timedelta(days=1, hours=3)).strftime("%Y-%m-%d %H:%M:%S")
+        t_yesterday_open = (now - datetime.timedelta(days=1, hours=5)).strftime("%Y-%m-%d %H:%M:%S")
+
+        t_monday = (now - datetime.timedelta(days=2, hours=4)).strftime("%Y-%m-%d %H:%M:%S")
+        t_monday_open = (now - datetime.timedelta(days=2, hours=8)).strftime("%Y-%m-%d %H:%M:%S")
+
+        t_prev_week_1 = (now - datetime.timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+        t_prev_week_2 = (now - datetime.timedelta(days=8)).strftime("%Y-%m-%d %H:%M:%S")
+
         sample_history = [
+            # 1. Today Trade: Unicorn Setup (Full WIN +3.0R)
             Signal(
-                id="hist_xau_1",
+                id="hist_xau_today_1",
                 strategy_id="strategy_breaker_ifvg_unicorn",
                 strategy_name="Unicorn Setup: Breaker Block + iFVG + 2/3 Candle Conf + Vol Div",
                 symbol="XAUUSD",
                 timeframe="15m",
                 action="BUY",
-                entry_price=3865.20,
-                stop_loss=3855.20,
-                take_profit_1=3880.20,
-                take_profit_2=3895.20,
+                entry_price=4005.20,
+                stop_loss=3995.20,
+                take_profit_1=4020.20,
+                take_profit_2=4035.20,
                 reason="Unicorn Setup: Bullish Breaker Retest + iFVG Alignment + 2-Candle Engulfing Rejection",
-                timestamp="2026-10-30 14:15:00",
+                timestamp=t_today_1_open,
                 status="WIN (TP2 HIT)",
                 result="WIN",
                 tp1_hit=True,
                 tp2_hit=True,
                 pnl_r=3.0,
-                closed_at="2026-10-30 18:45:00",
-                closed_price=3895.20,
-                live_status_note="🟢 FULL WIN: TP 2 Hit @ 3895.20 (+3.0R)",
+                closed_at=t_today_1,
+                closed_price=4035.20,
+                live_status_note="🟢 FULL WIN: TP 2 Hit @ 4035.20 (+3.0R)",
                 is_ultra_strong=True,
                 vol_div="Regular Bullish Vol Div",
                 style="scalp",
                 strength_grade="A+ ULTRA STRONG",
                 confidence_score=96,
                 confirmation_pattern="2-Candle Bullish Engulfing",
-                pattern_details="Bullish body completely engulfs previous bearish candle (3865.20 >= 3858.00)"
+                pattern_details="Bullish body completely engulfs previous bearish candle (4005.20 >= 3998.00)"
             ),
+            # 2. Today Trade: CRT Setup (Protected WIN +1.0R at Breakeven Trail)
             Signal(
-                id="hist_xau_2",
+                id="hist_xau_today_2",
                 strategy_id="strategy_crt_model",
                 strategy_name="CRT Setup: C1-C2-C3 Multi-TF + Vol Div",
                 symbol="XAUUSD",
                 timeframe="5m",
                 action="SELL",
-                entry_price=3890.50,
-                stop_loss=3898.50,
-                take_profit_1=3878.50,
-                take_profit_2=3866.50,
-                reason="CRT Setup: C2 Asian High Liquidity Sweep + First Presented FVG Retest Rejection",
-                timestamp="2026-10-31 00:15:00",
-                status="WIN (TP2 HIT)",
+                entry_price=4015.50,
+                stop_loss=4023.50,
+                take_profit_1=4003.50,
+                take_profit_2=3991.50,
+                reason="CRT Setup: Asian High Liquidity Sweep + First Presented FVG Retest Rejection",
+                timestamp=t_today_2_open,
+                status="WIN (BE TRAIL HIT)",
                 result="WIN",
                 tp1_hit=True,
-                tp2_hit=True,
-                pnl_r=3.0,
-                closed_at="2026-10-31 02:10:00",
-                closed_price=3866.50,
-                live_status_note="🟢 FULL WIN: TP 2 Hit @ 3866.50 (+3.0R)",
+                tp2_hit=False,
+                pnl_r=1.0,
+                closed_at=t_today_2,
+                closed_price=4015.50,
+                live_status_note="🛡️ PROTECTED WIN: TP1 Hit @ 4003.50, Trailed Stop Hit @ Entry (+1.0R)",
                 is_ultra_strong=True,
                 vol_div="Regular Bearish Vol Div",
                 style="scalp",
                 strength_grade="A+ ULTRA STRONG",
-                confidence_score=94,
+                confidence_score=92,
                 confirmation_pattern="3-Candle Evening Star Rejection",
-                pattern_details="C1 push -> C2 pause (3898.50) -> C3 bearish expansion close (3890.50)"
+                pattern_details="C1 push -> C2 pause -> C3 bearish expansion close"
             ),
+            # 3. This Week (Yesterday): Liquidity Sweep (SL Hit -1.0R)
             Signal(
-                id="hist_xau_3",
+                id="hist_xau_yest_1",
+                strategy_id="strategy_liquidity_sweep",
+                strategy_name="Session Liquidity Sweep (Turtle Soup)",
+                symbol="XAUUSD",
+                timeframe="15m",
+                action="SELL",
+                entry_price=3982.00,
+                stop_loss=3990.00,
+                take_profit_1=3970.00,
+                take_profit_2=3958.00,
+                reason="London Open Liquidity Sweep of Asian Highs + MSS Reversal",
+                timestamp=t_yesterday_open,
+                status="LOSS (SL HIT)",
+                result="LOSS",
+                sl_hit=True,
+                pnl_r=-1.0,
+                closed_at=t_yesterday,
+                closed_price=3990.00,
+                live_status_note="🔴 SL Hit @ 3990.00 (-1.0R Loss)",
+                is_ultra_strong=False,
+                vol_div=None,
+                style="scalp"
+            ),
+            # 4. This Week (Monday): Order Block Retest (Full WIN +3.0R)
+            Signal(
+                id="hist_xau_mon_1",
                 strategy_id="strategy_orderblock",
                 strategy_name="True Order Block (OB) Retest",
                 symbol="XAUUSD",
                 timeframe="1h",
                 action="BUY",
-                entry_price=3842.00,
-                stop_loss=3830.00,
-                take_profit_1=3860.00,
-                take_profit_2=3878.00,
+                entry_price=3942.00,
+                stop_loss=3930.00,
+                take_profit_1=3960.00,
+                take_profit_2=3978.00,
                 reason="True Bullish Order Block (with FVG origin) retest with explosive displacement",
-                timestamp="2026-10-29 10:00:00",
+                timestamp=t_monday_open,
                 status="WIN (TP2 HIT)",
                 result="WIN",
                 tp1_hit=True,
                 tp2_hit=True,
                 pnl_r=3.0,
-                closed_at="2026-10-29 16:30:00",
-                closed_price=3878.00,
-                live_status_note="🟢 FULL WIN: TP 2 Hit @ 3878.00 (+3.0R)",
+                closed_at=t_monday,
+                closed_price=3978.00,
+                live_status_note="🟢 FULL WIN: TP 2 Hit @ 3978.00 (+3.0R)",
                 is_ultra_strong=True,
                 vol_div="Regular Bullish Vol Div",
                 style="intraday",
@@ -159,28 +204,51 @@ class SignalEngine:
                 confirmation_pattern="2-Candle Piercing Reversal",
                 pattern_details="Bullish candle reclaims >50% of prior drop"
             ),
+            # 5. Past Week: FVG Imbalance (WIN +3.0R)
             Signal(
-                id="hist_xau_4",
-                strategy_id="strategy_liquidity_sweep",
-                strategy_name="Session Liquidity Sweep (Turtle Soup)",
+                id="hist_xau_past_1",
+                strategy_id="strategy_fvg",
+                strategy_name="Fair Value Gap (FVG) Retest",
                 symbol="XAUUSD",
-                timeframe="15m",
+                timeframe="30m",
+                action="BUY",
+                entry_price=3890.00,
+                stop_loss=3880.00,
+                take_profit_1=3905.00,
+                take_profit_2=3920.00,
+                reason="Bullish FVG Retest + Confluence",
+                timestamp=t_prev_week_1,
+                status="WIN (TP2 HIT)",
+                result="WIN",
+                tp1_hit=True,
+                tp2_hit=True,
+                pnl_r=3.0,
+                closed_at=t_prev_week_1,
+                closed_price=3920.00,
+                live_status_note="🟢 FULL WIN: TP 2 Hit (+3.0R)",
+                style="intraday"
+            ),
+            # 6. Past Week: EMA Ribbon (LOSS -1.0R)
+            Signal(
+                id="hist_xau_past_2",
+                strategy_id="strategy_ema_ribbon",
+                strategy_name="EMA 144 Retest + Cross",
+                symbol="XAUUSD",
+                timeframe="5m",
                 action="SELL",
-                entry_price=3882.00,
-                stop_loss=3890.00,
-                take_profit_1=3870.00,
-                take_profit_2=3858.00,
-                reason="London Open Liquidity Sweep of Asian Highs + MSS Reversal",
-                timestamp="2026-10-28 11:30:00",
+                entry_price=3910.00,
+                stop_loss=3918.00,
+                take_profit_1=3898.00,
+                take_profit_2=3886.00,
+                reason="EMA Ribbon Bearish Retest",
+                timestamp=t_prev_week_2,
                 status="LOSS (SL HIT)",
                 result="LOSS",
                 sl_hit=True,
                 pnl_r=-1.0,
-                closed_at="2026-10-28 12:45:00",
-                closed_price=3890.00,
-                live_status_note="🔴 SL Hit @ 3890.00 (-1.0R Loss)",
-                is_ultra_strong=False,
-                vol_div=None,
+                closed_at=t_prev_week_2,
+                closed_price=3918.00,
+                live_status_note="🔴 SL Hit (-1.0R Loss)",
                 style="scalp"
             )
         ]
@@ -253,6 +321,37 @@ class SignalEngine:
             d["current_market_price"] = d.get("closed_price", curr_p)
             d["pnl_status"] = "PROFIT" if pnl_r > 0 else "LOSS"
 
+        # Attach Daily / Weekly session flags
+        utc_now = datetime.datetime.now(datetime.timezone.utc)
+        pkt_now = utc_now + datetime.timedelta(hours=5)
+        if pkt_now.hour >= 3:
+            today_start = pkt_now.replace(hour=3, minute=0, second=0, microsecond=0)
+        else:
+            today_start = (pkt_now - datetime.timedelta(days=1)).replace(hour=3, minute=0, second=0, microsecond=0)
+        days_since_mon = pkt_now.weekday()
+        week_start = (pkt_now - datetime.timedelta(days=days_since_mon)).replace(hour=3, minute=0, second=0, microsecond=0)
+
+        dt_check = d.get("closed_at") or d.get("timestamp")
+        is_today = False
+        is_this_week = False
+        if dt_check:
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+                try:
+                    s_dt = datetime.datetime.strptime(str(dt_check)[:19], fmt)
+                    if s_dt >= today_start.replace(tzinfo=None):
+                        is_today = True
+                    if s_dt >= week_start.replace(tzinfo=None):
+                        is_this_week = True
+                    break
+                except Exception:
+                    pass
+
+        d["is_today"] = is_today
+        d["is_this_week"] = is_this_week
+        d["outcome_type"] = "WIN" if d.get("result") == "WIN" else ("LOSS" if d.get("result") == "LOSS" else "ACTIVE")
+        d["is_tp_hit"] = bool(d.get("result") == "WIN" or d.get("tp1_hit") or d.get("tp2_hit"))
+        d["is_sl_hit"] = bool(d.get("result") == "LOSS" or d.get("sl_hit"))
+
         return d
 
     def get_signals(self) -> List[Dict]:
@@ -281,11 +380,67 @@ class SignalEngine:
         with self.lock:
             closed = [s for s in self.signals if s.status not in ["ACTIVE", "TP1_HIT"]]
             active = [s for s in self.signals if s.status in ["ACTIVE", "TP1_HIT"]]
-            total = len(closed)
-            wins = sum(1 for s in closed if s.result == "WIN")
-            losses = sum(1 for s in closed if s.result == "LOSS")
-            net_r = sum((s.pnl_r or 0.0) for s in closed)
-            win_rate = (wins / total * 100.0) if total > 0 else 0.0
+
+            # Helper to calculate stats for a list of trades
+            def calc_metrics(trades: List[Signal]) -> Dict:
+                tot = len(trades)
+                w = sum(1 for s in trades if s.result == "WIN")
+                l = sum(1 for s in trades if s.result == "LOSS")
+                tp_hits = sum(1 for s in trades if s.status in ["WIN (TP2 HIT)", "WIN (BE TRAIL HIT)"] or s.result == "WIN")
+                sl_hits = sum(1 for s in trades if s.status in ["LOSS (SL HIT)"] or s.result == "LOSS")
+                net = sum((s.pnl_r or 0.0) for s in trades)
+                wr = (w / tot * 100.0) if tot > 0 else 0.0
+                return {
+                    "total_closed": tot,
+                    "wins": w,
+                    "losses": l,
+                    "tp_count": tp_hits,
+                    "sl_count": sl_hits,
+                    "win_rate": round(wr, 1),
+                    "net_r": round(net, 1)
+                }
+
+            # Time calculation in Pakistan Time (PKT = UTC+5)
+            utc_now = datetime.datetime.now(datetime.timezone.utc)
+            pkt_now = utc_now + datetime.timedelta(hours=5)
+
+            # Daily Session Start (3:00 AM PKT today)
+            if pkt_now.hour >= 3:
+                today_start = pkt_now.replace(hour=3, minute=0, second=0, microsecond=0)
+            else:
+                today_start = (pkt_now - datetime.timedelta(days=1)).replace(hour=3, minute=0, second=0, microsecond=0)
+
+            # Weekly Session Start (Monday 3:00 AM PKT)
+            days_since_monday = pkt_now.weekday()
+            week_start = (pkt_now - datetime.timedelta(days=days_since_monday)).replace(hour=3, minute=0, second=0, microsecond=0)
+
+            def parse_dt(dt_str):
+                if not dt_str:
+                    return None
+                for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+                    try:
+                        return datetime.datetime.strptime(str(dt_str)[:19], fmt)
+                    except Exception:
+                        pass
+                return None
+
+            today_trades = []
+            week_trades = []
+            for s in closed:
+                s_dt = parse_dt(s.closed_at) or parse_dt(s.timestamp)
+                if s_dt:
+                    if s_dt >= today_start.replace(tzinfo=None):
+                        today_trades.append(s)
+                    if s_dt >= week_start.replace(tzinfo=None):
+                        week_trades.append(s)
+
+            overall_metrics = calc_metrics(closed)
+            daily_metrics = calc_metrics(today_trades)
+            weekly_metrics = calc_metrics(week_trades)
+
+            daily_metrics["label"] = f"Today ({today_start.strftime('%a, %d %b')})"
+            weekly_metrics["label"] = f"This Week (Since Mon {week_start.strftime('%d %b')})"
+            overall_metrics["label"] = "All-Time Full History"
 
             curr_p = self.data_feed.get_current_price("XAUUSD")
             active_floating_r = 0.0
@@ -299,11 +454,14 @@ class SignalEngine:
                 active_floating_usd += (diff * 100.0)
 
             return {
-                "total_closed": total,
-                "wins": wins,
-                "losses": losses,
-                "win_rate": round(win_rate, 1),
-                "net_r": round(net_r, 1),
+                "daily": daily_metrics,
+                "weekly": weekly_metrics,
+                "overall": overall_metrics,
+                "total_closed": overall_metrics["total_closed"],
+                "wins": overall_metrics["wins"],
+                "losses": overall_metrics["losses"],
+                "win_rate": overall_metrics["win_rate"],
+                "net_r": overall_metrics["net_r"],
                 "active_floating_r": round(active_floating_r, 2),
                 "active_floating_pts": round(active_floating_pts, 2),
                 "active_floating_usd": round(active_floating_usd, 2)

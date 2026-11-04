@@ -1,4 +1,5 @@
 from strategies.base_strategy import BaseStrategy
+from strategies.strategy_cme_open_interest import CMEOpenInterestStrategy
 from strategies.strategy_orderblock import OrderBlockStrategy
 from strategies.strategy_fvg import FVGStrategy
 from strategies.strategy_smt import SMTStrategy
@@ -18,6 +19,7 @@ from strategies.strategy_breaker_ifvg_unicorn import BreakerIFVGUnicornStrategy
 
 __all__ = [
     "BaseStrategy",
+    "CMEOpenInterestStrategy",
     "OrderBlockStrategy",
     "FVGStrategy",
     "SMTStrategy",
