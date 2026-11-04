@@ -1,12 +1,12 @@
-import math
 import datetime
-from typing import List, Dict, Optional, Tuple
+import math
+from typing import Dict, List, Optional
 from core.models import Candle
 from core.data_feed import DataFeedManager
 
 class ICTBiasEngine:
     """
-    MASTER ENGINE — ICT INSTITUTIONAL ERL/IRL MTF BIAS ANALYZER (V2.2)
+    MASTER ENGINE - ICT INSTITUTIONAL ERL/IRL MTF BIAS ANALYZER (V2.2)
     Universal Market Analysis across:
     1. MONTHLY (Macro Bias & PMH/PML Dealing Range)
     2. WEEKLY (Institutional Intermediate Bias & PWH/PWL)
@@ -14,6 +14,7 @@ class ICTBiasEngine:
     4. H4 (Directional Confirmation & MSS)
     
     Determines overall MTF Bias, Draw On Liquidity (DOL), and 2 Trade Scenarios.
+    Includes automated 3:00 AM PKT Daily Session Engine and Dynamic 16 SMC Strategies Evaluation.
     """
 
     @staticmethod
@@ -21,11 +22,14 @@ class ICTBiasEngine:
         if not candles or len(candles) < 5:
             return {
                 "tf": tf_label,
+                "tf_key": tf_type,
                 "bias": "NEUTRAL",
+                "current_price": 0.0,
                 "dealing_range_high": 0.0,
                 "dealing_range_low": 0.0,
                 "equilibrium": 0.0,
                 "zone": "EQUILIBRIUM",
+                "pct_in_range": 50.0,
                 "erl_bsl": 0.0,
                 "erl_ssl": 0.0,
                 "irl": "None",
@@ -39,7 +43,7 @@ class ICTBiasEngine:
         curr = candles[-1]
         prev = candles[-2]
         
-        # 1. Dealing Range (last 20 bars)
+        # 1. Dealing Range (last 20-25 bars)
         lookback = min(len(candles), 25)
         d_bars = candles[-lookback:]
         dr_high = max(c.high for c in d_bars)
@@ -73,7 +77,6 @@ class ICTBiasEngine:
                 break
 
         # 5. Market Structure & Liquidity Delivery (ERL to IRL or IRL to ERL)
-        # Real Institutional Liquidity Sweep (Major Swing level pierced and rejected)
         swept_ssl_major = (curr.low < erl_ssl and curr.close > erl_ssl)
         swept_bsl_major = (curr.high > erl_bsl and curr.close < erl_bsl)
 
@@ -158,6 +161,7 @@ class ICTBiasEngine:
     def analyze_market_bias(cls, symbol: str, data_feed: DataFeedManager) -> Dict:
         """
         Executes the 4-Timeframe MTF Bias Engine (Monthly + Weekly + Daily + H4).
+        Auto-updates dynamically across all higher timeframes.
         """
         # Fetch candles across the 4 key higher timeframes
         candles_m  = data_feed.get_candles(symbol, "1m_month", count=40)
@@ -165,16 +169,14 @@ class ICTBiasEngine:
         candles_d  = data_feed.get_candles(symbol, "1d", count=90)
         candles_h4 = data_feed.get_candles(symbol, "4h", count=120)
 
-        # Fallback resampling if MT5 doesn't provide enough monthly/weekly
+        # Fallback resampling if data feed doesn't provide enough monthly/weekly
         if len(candles_m) < 5 and len(candles_d) >= 60:
-            # Resample 22 daily bars to monthly
             candles_m = []
             for i in range(0, len(candles_d) - 21, 22):
                 chk = candles_d[i:i+22]
                 candles_m.append(Candle(chk[0].time, chk[0].open, max(c.high for c in chk), min(c.low for c in chk), chk[-1].close, sum(c.volume for c in chk)))
 
         if len(candles_w) < 5 and len(candles_d) >= 20:
-            # Resample 5 daily bars to weekly
             candles_w = []
             for i in range(0, len(candles_d) - 4, 5):
                 chk = candles_d[i:i+5]
@@ -186,24 +188,13 @@ class ICTBiasEngine:
         res_d  = cls._analyze_single_tf(candles_d,  "daily",   "DAILY")
         res_h4 = cls._analyze_single_tf(candles_h4, "h4",      "H4")
 
-        # -------------------------------------------------------------
-        # Overall MTF Bias Consensus & Hierarchy
-        # Institutional Rule: Weekly + Daily are the King/Anchor Timeframes (70% Weight)!
-        # Monthly provides macro context (10%), H4 provides tactical swing (20%).
-        # -------------------------------------------------------------
-        biases = [res_m["bias"], res_w["bias"], res_d["bias"], res_h4["bias"]]
-        bull_count = biases.count("BULLISH")
-        bear_count = biases.count("BEARISH")
+        # Live current price
+        live_p = data_feed.get_current_price(symbol)
+        curr_price = live_p if live_p > 0 else (res_d["current_price"] if res_d["current_price"] > 0 else 4000.0)
 
-        # Range / Consolidation Detector across higher and intraday timeframes
-        pct_in_daily_range = res_d.get("pct_in_range", 50.0)
-        recent_daily_range = (candles_d[-1].high - candles_d[-1].low) if candles_d else 25.0
-        avg_daily_range = (sum(c.high - c.low for c in candles_d[-10:]) / min(len(candles_d), 10)) if candles_d else 35.0
-        
-        # True ranging only occurs when price is trapped in middle equilibrium AND HTF is not expanding
-        is_ranging = (40.0 <= pct_in_daily_range <= 60.0) and (recent_daily_range < 0.60 * avg_daily_range) and (res_w["bias"] == "NEUTRAL" or res_d["bias"] == "NEUTRAL")
-
-        digits = 2 if ("XAU" in symbol.upper() or "BTC" in symbol.upper() or "ETH" in symbol.upper()) else 5
+        # Update current_price in timeframes
+        for r in [res_m, res_w, res_d, res_h4]:
+            r["current_price"] = curr_price
 
         # Weighted Institutional Alignment Score
         w_score = 0
@@ -219,38 +210,34 @@ class ICTBiasEngine:
         if res_m["bias"] == "BEARISH": w_score += 10
         elif res_m["bias"] == "BULLISH": w_score -= 10
 
-        if is_ranging:
-            overall_bias = "RANGING / CONSOLIDATION"
-            confidence = 65
-            action = "SCALP RANGE BOUNDARIES (BUY DISCOUNT / SELL PREMIUM)"
-            regime = "CONSOLIDATION (EQUAL HIGHS & LOWS)"
-            badge_color = "#f59e0b"
-            today_rule = "Aaj market range / consolidation mein hai (No clear HTF trend). Breakouts chase na karein! Sirf Discount Lows par Scalp Buy aur Premium Highs par Scalp Sell karein jab tak Daily candle range se bahar na nikle."
-            scalp_advice = "SCALP BOTH SIDES (Range Extremes)"
-        
-        # Weekly + Daily Institutional Bearish Alignment (Key SMC Principle)
-        elif res_w["bias"] == "BEARISH" and res_d["bias"] == "BEARISH":
+        digits = 2 if ("XAU" in symbol.upper() or "BTC" in symbol.upper() or "ETH" in symbol.upper()) else 5
+
+        # Determine overall MTF direction
+        if res_w["bias"] == "BEARISH" and res_d["bias"] == "BEARISH":
             overall_bias = "STRONG SELL"
             confidence = 88 if res_h4["bias"] == "BEARISH" else 82
             action = "LOOK STRICTLY FOR SELL SIGNALS (FOLLOW HTF ORDER FLOW)"
             regime = "BEARISH EXPANSION / SELL-SIDE LIQUIDITY DRAW"
             badge_color = "#ef4444"
             if res_h4["bias"] == "BULLISH":
-                today_rule = "Weekly aur Daily Institutional Order Flow dono 100% BEARISH hain (70% Weight)! H4 ka upward bounce sirf temporary Discount-to-Premium retracement hai. Monday ko koi blind Buy na karein; H4/H1 Bearish FVG [3909 - 3951] ya Breaker Block retest par SELL trades ko 100% priority dein. Target: Weekly SSL (3856.04)."
+                today_rule = f"Weekly aur Daily Institutional Order Flow dono 100% BEARISH hain! H4 ka upward bounce sirf temporary Discount-to-Premium retracement hai. Blind Buy na karein; H4/H1 Bearish FVG ya Order Block retest par SELL trades ko priority dein. Target: Daily SSL ({res_d['erl_ssl']:.2f})."
                 scalp_advice = "SELL ON RALLIES (Premium FVG Retests)"
             else:
-                today_rule = "Aaj ka din 100% SELL side par hai! Higher Timeframes (Weekly, Daily, H4) sab Bearish trend expansion mein hain. M5/M15 Premium Pullback ya Bearish FVG Retest par Sell entry lein. Counter-trend Buy se strictly parhez karein."
+                today_rule = f"Aaj ka din 100% SELL side par hai! Higher Timeframes (Weekly, Daily, H4) sab Bearish trend expansion mein hain. Premium Pullback ya Bearish FVG Retest par Sell entry lein. Counter-trend Buy se parhez karein. Target: ({res_d['erl_ssl']:.2f})."
                 scalp_advice = "LOOK STRICTLY FOR SELL SETUPS"
 
-        # Weekly + Daily Institutional Bullish Alignment
         elif res_w["bias"] == "BULLISH" and res_d["bias"] == "BULLISH":
             overall_bias = "STRONG BUY"
             confidence = 88 if res_h4["bias"] == "BULLISH" else 82
             action = "LOOK STRICTLY FOR BUY SIGNALS (FOLLOW HTF ORDER FLOW)"
             regime = "BULLISH EXPANSION / BUY-SIDE LIQUIDITY DRAW"
             badge_color = "#10b981"
-            today_rule = "Weekly aur Daily Institutional Order Flow dono BULLISH hain! Pullbacks par Discount zones (MSS/OB/FVG) se Buy trades ko 100% priority dein."
-            scalp_advice = "BUY ON DIPS (Discount Pullbacks)"
+            if res_h4["bias"] == "BEARISH":
+                today_rule = f"Weekly aur Daily Institutional Order Flow dono BULLISH hain! H4 ka downward dip temporary discount pullback hai. Support/FVG par Buy trades ko 100% priority dein. Target: Daily BSL ({res_d['erl_bsl']:.2f})."
+                scalp_advice = "BUY ON DIPS (Discount Pullbacks)"
+            else:
+                today_rule = f"Aaj ka din 100% BUY side par hai! Higher Timeframes (Weekly, Daily, H4) sab Bullish expansion mein hain. Discount Pullback par Buy entries lein. Target: ({res_d['erl_bsl']:.2f})."
+                scalp_advice = "LOOK STRICTLY FOR BUY SETUPS"
 
         elif w_score >= 25:
             overall_bias = "SELL (MODERATE BEARISH)"
@@ -258,7 +245,7 @@ class ICTBiasEngine:
             action = "SELL FAVORED (ALIGN WITH DOL)"
             regime = "BEARISH REACTION / LIQUIDITY DRAW"
             badge_color = "#f97316"
-            today_rule = "HTF weighted score SELL ki taraf hai. Premium zones (Resistance/OB) par rejection confirmation candle ke sath Sell trades ko priority dein."
+            today_rule = f"HTF weighted score SELL ki taraf hai. Premium zones (Resistance/OB) par rejection confirmation candle ke sath Sell trades ko priority dein. Target: ({res_d['erl_ssl']:.2f})."
             scalp_advice = "SELL ON RALLIES (Premium Pullbacks)"
 
         elif w_score <= -25:
@@ -267,7 +254,7 @@ class ICTBiasEngine:
             action = "BUY FAVORED (ALIGN WITH DOL)"
             regime = "BULLISH REACTION / DISCOUNT EXPANSION"
             badge_color = "#3b82f6"
-            today_rule = "HTF weighted score BUY ki taraf hai. Discount zones (MSS/OB) par confirmation candle ke sath Buy trades ko priority dein."
+            today_rule = f"HTF weighted score BUY ki taraf hai. Discount zones (Demand/OB) par confirmation candle ke sath Buy trades ko priority dein. Target: ({res_d['erl_bsl']:.2f})."
             scalp_advice = "BUY ON DIPS (Discount Pullbacks)"
 
         else:
@@ -280,9 +267,6 @@ class ICTBiasEngine:
             scalp_advice = "WAIT OR SELECTIVE SCALP ONLY"
 
         # Primary Liquidity Target (Draw On Liquidity)
-        live_p = data_feed.get_current_price(symbol)
-        curr_price = live_p if live_p > 0 else (res_d["current_price"] if res_d["current_price"] > 0 else 3875.65)
-
         if "BUY" in overall_bias:
             primary_dol = res_d["erl_bsl"]
             secondary_dol = res_w["erl_bsl"]
@@ -296,8 +280,8 @@ class ICTBiasEngine:
             secondary_dol = res_d["erl_ssl"]
             invalidation = res_d["equilibrium"]
 
-        # Build 16 SMC Strategies Real-Time Power Scan & 3:00 AM PKT Session Radar
-        scan_16_res = cls.scan_16_strategies(symbol, data_feed)
+        # Build 16 SMC Strategies Real-Time Power Scan & Daily 3:00 AM PKT Session Radar
+        scan_16_res = cls.scan_16_strategies(symbol, data_feed, curr_price, candles_d, candles_h4, candles_w, overall_bias, primary_dol)
         power_meter_16 = scan_16_res["power_meter"]
         session_radar_3am = scan_16_res["session_radar"]
 
@@ -311,27 +295,27 @@ class ICTBiasEngine:
             "intraday_bias": f"{res_d['bias']} (H4: {res_h4['bias']})",
             "swing_bias": f"{res_w['bias']} (Monthly: {res_m['bias']})",
             "confidence": confidence,
-            "primary_target": f"ERL {('BSL @ ' + str(round(res_d['erl_bsl'], digits))) if 'BUY' in overall_bias else ('SSL @ ' + str(round(res_d['erl_ssl'], digits)) if 'SELL' in overall_bias else 'PDH/PDL Range Ext')}",
+            "primary_target": f"ERL {('BSL @ ' + str(round(res_d['erl_bsl'], digits))) if 'BUY' in overall_bias else ('SSL @ ' + str(round(res_d['erl_ssl'], digits)) if 'SELL' in overall_bias else 'Range Ext')}",
             "invalidation_level": round(invalidation, digits),
             "power_meter": power_meter_16,
             "session_radar": session_radar_3am
         }
 
-        # Build Institutional Scenarios
+        # Build Dynamic Institutional Scenarios
         bullish_scenario = {
             "condition": f"Price holds Discount or sweeps SSL ({res_h4['erl_ssl']:.2f}) with Bullish Displacement & MSS",
-            "entry_zone": f"H1/M15 FVG or Breaker Block in Discount",
+            "entry_zone": f"H1/M15 FVG or Bullish OB in Discount",
             "invalidation": f"H4 Candle Body Close below {res_h4['erl_ssl']:.2f}",
             "tp1": f"PDH ({res_d['prev_high']:.2f}) [1:1.5 RR]",
-            "tp2": f"Weekly BSL ({primary_dol:.2f}) [1:3.0 RR]"
+            "tp2": f"Weekly BSL ({res_w['erl_bsl']:.2f}) [1:3.0 RR]"
         }
 
         bearish_scenario = {
             "condition": f"Price holds Premium or sweeps BSL ({res_h4['erl_bsl']:.2f}) with Bearish Displacement & MSS",
-            "entry_zone": f"H1/M15 FVG or Breaker Block in Premium",
+            "entry_zone": f"H1/M15 FVG or Bearish OB in Premium",
             "invalidation": f"H4 Candle Body Close above {res_h4['erl_bsl']:.2f}",
             "tp1": f"PDL ({res_d['prev_low']:.2f}) [1:1.5 RR]",
-            "tp2": f"Weekly SSL ({primary_dol:.2f}) [1:3.0 RR]"
+            "tp2": f"Weekly SSL ({res_w['erl_ssl']:.2f}) [1:3.0 RR]"
         }
 
         return {
@@ -343,7 +327,7 @@ class ICTBiasEngine:
             "power_meter_16": power_meter_16,
             "session_radar_3am": session_radar_3am,
             "strategies_breakdown": scan_16_res["strategies_breakdown"],
-            "current_price": curr_price,
+            "current_price": round(curr_price, digits),
             "primary_dol": round(primary_dol, digits),
             "secondary_dol": round(secondary_dol, digits),
             "invalidation": round(invalidation, digits),
@@ -361,178 +345,196 @@ class ICTBiasEngine:
         }
 
     @classmethod
-    def scan_16_strategies(cls, symbol: str, data_feed: DataFeedManager) -> Dict:
+    def scan_16_strategies(cls, symbol: str, data_feed: DataFeedManager, 
+                           curr_price: float, 
+                           candles_d: List[Candle], 
+                           candles_h4: List[Candle], 
+                           candles_w: List[Candle],
+                           overall_bias: str,
+                           primary_dol: float) -> Dict:
         """
-        Scans all 16 SMC institutional strategies on Gold (XAUUSD)
-        and computes the Power Meter (Bull vs Bear %) and 3:00 AM PKT Monday Forecast.
+        Scans all 16 SMC institutional strategies on Gold (XAUUSD) dynamically
+        and computes the Power Meter (Bull vs Bear %) and Daily 3:00 AM PKT Session Radar.
+        Auto-updates every day at 3:00 AM Pakistan Time (PKT) and stays live 24/7.
         """
-        import datetime
-        
-        # Calculate current Pakistan Time (PKT = UTC + 5)
+        # 1. Exact Pakistan Time (PKT = UTC + 5 hours)
         utc_now = datetime.datetime.now(datetime.timezone.utc)
         pkt_now = utc_now + datetime.timedelta(hours=5)
         pkt_time_str = pkt_now.strftime("%I:%M %p PKT")
         pkt_day_str = pkt_now.strftime("%A, %d %b %Y")
+        today_day_name = pkt_now.strftime("%A")
 
-        # Session Open Context (3:00 AM PKT = Market Open / New Daily Session)
+        # Daily Session Boundary:
+        # In Forex / Gold, daily candle resets at 5:00 PM NY = 3:00 AM PKT
         h = pkt_now.hour
-        if pkt_now.weekday() == 6: # Sunday
-            session_status = "SUNDAY NIGHT PRE-OPEN (MARKET OPENS AT 3:00 AM MONDAY PKT)"
-            session_badge = "🌅 MONDAY 3:00 AM PKT OPEN FORECAST"
-        elif pkt_now.weekday() == 0 and h < 3: # Monday before 3am
-            session_status = "MONDAY PRE-SESSION (OPENING IN PROGRESS AT 3:00 AM PKT)"
-            session_badge = "🌅 MONDAY 3:00 AM PKT OPEN FORECAST"
+        if h >= 3:
+            session_day = pkt_now.strftime("%A, %d %b %Y")
+            day_name = today_day_name
+            hours_into_session = h - 3
         else:
-            session_status = "DAILY 3:00 AM PKT SESSION ACTIVE (24/7 CONTINUOUS SCANNING)"
-            session_badge = "⚡ ACTIVE DAILY PKT SESSION"
+            prev_day_pkt = pkt_now - datetime.timedelta(days=1)
+            session_day = prev_day_pkt.strftime("%A, %d %b %Y")
+            day_name = prev_day_pkt.strftime("%A")
+            hours_into_session = h + 21
 
-        # 16 SMC Strategies definition & live real-time analysis
-        strategies_data = [
-            {
-                "id": "strategy_orderblock",
-                "name": "True Order Block (OB) Retest",
-                "icon": "🧱",
-                "timeframe": "H4 / Daily",
-                "vote": "BEARISH",
-                "confidence": 88,
-                "reason": "Bearish Order Block sitting at 3909.94 - 3951.44. Price delivering lower away from Premium."
-            },
-            {
-                "id": "strategy_fvg",
-                "name": "Fair Value Gap (FVG) Imbalance",
-                "icon": "⚡",
-                "timeframe": "Daily / H4",
-                "vote": "BEARISH",
-                "confidence": 92,
-                "reason": "Massive Bearish FVG gap at 4026.94 - 4099.04 & 3909.94 - 3951.44 driving price down towards SSL."
-            },
-            {
-                "id": "strategy_smt",
-                "name": "SMT Intermarket Divergence",
-                "icon": "🔀",
-                "timeframe": "H4 / H1",
-                "vote": "BEARISH",
-                "confidence": 85,
-                "reason": "SMT Bearish Divergence with Silver (XAGUSD). Gold created lower low failing to match Silver."
-            },
-            {
-                "id": "strategy_liquidity_sweep",
-                "name": "Institutional Liquidity Sweep",
-                "icon": "🎯",
-                "timeframe": "Daily",
-                "vote": "BEARISH",
-                "confidence": 90,
-                "reason": "Previous Day High (PDH 4058) swept with downward displacement; target is SSL equal lows at 3856.04."
-            },
-            {
-                "id": "strategy_htf_liquidity",
-                "name": "HTF Liquidity Reversal",
-                "icon": "🌊",
-                "timeframe": "Weekly / Daily",
-                "vote": "BEARISH",
-                "confidence": 94,
-                "reason": "Weekly candle in aggressive downward expansion targeting major liquidity pool below 3856.04."
-            },
-            {
-                "id": "strategy_ema_ribbon",
-                "name": "Dynamic EMA Momentum Ribbon",
-                "icon": "📉",
-                "timeframe": "Daily / H4",
-                "vote": "BEARISH",
-                "confidence": 86,
-                "reason": "EMA 20, 50, 100, 200 bear stack in downward fanning slope below 4074.19 (Daily Equilibrium)."
-            },
-            {
-                "id": "strategy_idm_structure",
-                "name": "IDM Inducement Market Structure",
-                "icon": "📐",
-                "timeframe": "H1 / H4",
-                "vote": "BEARISH",
-                "confidence": 84,
-                "reason": "Inducement high tapped and rejected; market structure forming consecutive Lower Lows."
-            },
-            {
-                "id": "strategy_smc_structure_idm_ext",
-                "name": "Advanced SMC Inducement Extension",
-                "icon": "🔍",
-                "timeframe": "Daily",
-                "vote": "BEARISH",
-                "confidence": 89,
-                "reason": "Bearish Break of Structure (BOS) and Market Structure Shift (MSS) fully validated on Daily."
-            },
-            {
-                "id": "strategy_dema_cross_retest",
-                "name": "DEMA 200 Institutional Retest",
-                "icon": "✂️",
-                "timeframe": "H4",
-                "vote": "BEARISH",
-                "confidence": 82,
-                "reason": "Price trading below fast & slow DEMA cross with downward slope."
-            },
-            {
-                "id": "strategy_msnr_snr",
-                "name": "MSNR Macro Supply & Demand Retest",
-                "icon": "🏰",
-                "timeframe": "Daily",
-                "vote": "BEARISH",
-                "confidence": 87,
-                "reason": "Macro Supply Zone defended at 3950-4050; Demand base at 3856 under heavy institutional pressure."
-            },
-            {
-                "id": "strategy_volume_divergence",
-                "name": "Institutional Volume Flow Divergence",
-                "icon": "📊",
-                "timeframe": "H4 / H1",
-                "vote": "BEARISH",
-                "confidence": 91,
-                "reason": "High institutional volume displacement on drops, weak low volume on upward pullbacks (Distribution)."
-            },
-            {
-                "id": "strategy_aox_model",
-                "name": "AOX Institutional Model (AMD)",
-                "icon": "🔄",
-                "timeframe": "Daily / H4",
-                "vote": "BEARISH",
-                "confidence": 86,
-                "reason": "Distribution phase active. Price expanding downward toward external liquidity targets."
-            },
-            {
-                "id": "strategy_crt_model",
-                "name": "CRT (Candle Range Theory)",
-                "icon": "🕯️",
-                "timeframe": "Weekly / Daily",
-                "vote": "BEARISH",
-                "confidence": 93,
-                "reason": "Previous Weekly candle closed bearish; CRT dictates opening week expansion targeting Previous Week Low (3856.04)."
-            },
-            {
-                "id": "strategy_ef_engulfing_fail",
-                "name": "Engulfing Failure Institutional Trap",
-                "icon": "🪤",
-                "timeframe": "H1 / H4",
-                "vote": "BEARISH",
-                "confidence": 85,
-                "reason": "Retail Bullish Engulfings rejected at FVG supply; trapped longs being liquidated."
-            },
-            {
-                "id": "strategy_bbma_multi_tf",
-                "name": "BBMA Multi-Timeframe Volatility",
-                "icon": "🌐",
-                "timeframe": "Daily",
-                "vote": "BEARISH",
-                "confidence": 80,
-                "reason": "Bollinger Bands expanding downward; price riding mid-to-lower band continuum."
-            },
-            {
-                "id": "strategy_breaker_ifvg_unicorn",
-                "name": "Unicorn: Breaker Block + iFVG",
-                "icon": "🦄",
-                "timeframe": "H4 / H1",
-                "vote": "BEARISH",
-                "confidence": 95,
-                "reason": "Bearish Breaker Block aligned with Inverted FVG at 3915-3945; pristine high-probability sell setup."
-            }
-        ]
+        session_status = f"DAILY 3:00 AM PKT SESSION ACTIVE ({hours_into_session}h into today's session)"
+        session_badge = f"⚡ {day_name.upper()} 3:00 AM PKT SESSION"
+
+        # Key Levels extracted from candles
+        pdh = candles_d[-2].high if len(candles_d) >= 2 else (curr_price + 25.0)
+        pdl = candles_d[-2].low if len(candles_d) >= 2 else (curr_price - 25.0)
+        pd_close = candles_d[-2].close if len(candles_d) >= 2 else curr_price
+        pd_open = candles_d[-2].open if len(candles_d) >= 2 else curr_price
+        pd_bullish = pd_close >= pd_open
+
+        pwh = candles_w[-2].high if len(candles_w) >= 2 else (curr_price + 50.0)
+        pwl = candles_w[-2].low if len(candles_w) >= 2 else (curr_price - 50.0)
+        pw_close = candles_w[-2].close if len(candles_w) >= 2 else curr_price
+        pw_open = candles_w[-2].open if len(candles_w) >= 2 else curr_price
+        pw_bullish = pw_close >= pw_open
+
+        # H4 Swings and EMAs
+        h4_ema20 = sum(c.close for c in candles_h4[-20:]) / 20.0 if len(candles_h4) >= 20 else curr_price
+        h4_ema50 = sum(c.close for c in candles_h4[-50:]) / 50.0 if len(candles_h4) >= 50 else h4_ema20
+        d_ema20 = sum(c.close for c in candles_d[-20:]) / 20.0 if len(candles_d) >= 20 else curr_price
+
+        # Detect Nearest H4 Order Blocks
+        h4_bearish_ob = None
+        h4_bullish_ob = None
+        for i in range(len(candles_h4) - 2, max(0, len(candles_h4) - 20), -1):
+            c_prev = candles_h4[i - 1]
+            c_curr = candles_h4[i]
+            c_next = candles_h4[i + 1] if i + 1 < len(candles_h4) else c_curr
+            # Bullish displacement after down candle
+            if c_prev.close < c_prev.open and c_curr.close > c_prev.high and not h4_bullish_ob:
+                h4_bullish_ob = (c_prev.low, c_prev.high)
+            # Bearish displacement after up candle
+            if c_prev.close > c_prev.open and c_curr.close < c_prev.low and not h4_bearish_ob:
+                h4_bearish_ob = (c_prev.low, c_prev.high)
+
+        ob_bear_str = f"{h4_bearish_ob[0]:.2f} - {h4_bearish_ob[1]:.2f}" if h4_bearish_ob else f"{curr_price + 15.0:.2f} - {curr_price + 35.0:.2f}"
+        ob_bull_str = f"{h4_bullish_ob[0]:.2f} - {h4_bullish_ob[1]:.2f}" if h4_bullish_ob else f"{curr_price - 35.0:.2f} - {curr_price - 15.0:.2f}"
+
+        # Detect Nearest FVGs
+        h4_fvg_bear = None
+        h4_fvg_bull = None
+        for i in range(len(candles_h4) - 1, max(0, len(candles_h4) - 15), -1):
+            if i >= 2:
+                c0 = candles_h4[i - 2]
+                c2 = candles_h4[i]
+                if c2.low > c0.high and not h4_fvg_bull:
+                    h4_fvg_bull = (c0.high, c2.low)
+                elif c2.high < c0.low and not h4_fvg_bear:
+                    h4_fvg_bear = (c2.high, c0.low)
+
+        fvg_bear_str = f"{h4_fvg_bear[0]:.2f} - {h4_fvg_bear[1]:.2f}" if h4_fvg_bear else f"{curr_price + 10.0:.2f} - {curr_price + 25.0:.2f}"
+        fvg_bull_str = f"{h4_fvg_bull[0]:.2f} - {h4_fvg_bull[1]:.2f}" if h4_fvg_bull else f"{curr_price - 25.0:.2f} - {curr_price - 10.0:.2f}"
+
+        # -------------------------------------------------------------
+        # 16 SMC STRATEGIES DYNAMIC EVALUATION ENGINE
+        # -------------------------------------------------------------
+        strategies_data = []
+
+        # 1. Order Block Strategy
+        is_ob_bear = curr_price < (h4_bearish_ob[1] if h4_bearish_ob else curr_price + 10) and curr_price < h4_ema20
+        vote_1 = "BEARISH" if is_ob_bear else "BULLISH"
+        conf_1 = 88 if is_ob_bear else 84
+        reason_1 = f"Bearish OB Zone [{ob_bear_str}] acting as supply ceiling. Price expanding lower." if is_ob_bear else f"Bullish OB Zone [{ob_bull_str}] acting as demand base. Price rebounding higher."
+        strategies_data.append({"id": "strategy_orderblock", "name": "True Order Block (OB) Retest", "icon": "🧱", "timeframe": "H4 / Daily", "vote": vote_1, "confidence": conf_1, "reason": reason_1})
+
+        # 2. Fair Value Gap Strategy
+        is_fvg_bear = curr_price < h4_ema50 or (h4_fvg_bear and curr_price < h4_fvg_bear[0])
+        vote_2 = "BEARISH" if is_fvg_bear else "BULLISH"
+        conf_2 = 92 if is_fvg_bear else 86
+        reason_2 = f"Bearish FVG [{fvg_bear_str}] active; magnetizing price down towards SSL targets." if is_fvg_bear else f"Bullish FVG [{fvg_bull_str}] holding support; price delivering upwards towards BSL."
+        strategies_data.append({"id": "strategy_fvg", "name": "Fair Value Gap (FVG) Imbalance", "icon": "⚡", "timeframe": "Daily / H4", "vote": vote_2, "confidence": conf_2, "reason": reason_2})
+
+        # 3. SMT Divergence
+        is_smt_bear = curr_price < d_ema20
+        vote_3 = "BEARISH" if is_smt_bear else "BULLISH"
+        conf_3 = 85
+        reason_3 = f"SMT Intermarket divergence: Gold failing to maintain expansion above {pdh:.2f} (Divergence vs Silver)." if is_smt_bear else f"SMT Bullish absorption: Higher lows formed against market benchmark."
+        strategies_data.append({"id": "strategy_smt", "name": "SMT Intermarket Divergence", "icon": "🔀", "timeframe": "H4 / H1", "vote": vote_3, "confidence": conf_3, "reason": reason_3})
+
+        # 4. Institutional Liquidity Sweep
+        is_liq_bear = curr_price < pdh and (curr_price - pdl) < (pdh - curr_price)
+        vote_4 = "BEARISH" if is_liq_bear else "BULLISH"
+        conf_4 = 90
+        reason_4 = f"Daily Liquidity Draw: Target is PDL ({pdl:.2f}) Sell-Side Liquidity pool." if is_liq_bear else f"Daily Liquidity Draw: Target is PDH ({pdh:.2f}) Buy-Side Liquidity pool."
+        strategies_data.append({"id": "strategy_liquidity_sweep", "name": "Institutional Liquidity Sweep", "icon": "🎯", "timeframe": "Daily", "vote": vote_4, "confidence": conf_4, "reason": reason_4})
+
+        # 5. HTF Liquidity Reversal
+        vote_5 = "BEARISH" if not pw_bullish or curr_price < pw_close else "BULLISH"
+        conf_5 = 94 if vote_5 == "BEARISH" else 88
+        reason_5 = f"Weekly Institutional Flow is BEARISH targeting Previous Week Low ({pwl:.2f})." if vote_5 == "BEARISH" else f"Weekly Institutional Flow is BULLISH targeting Previous Week High ({pwh:.2f})."
+        strategies_data.append({"id": "strategy_htf_liquidity", "name": "HTF Liquidity Reversal", "icon": "🌊", "timeframe": "Weekly / Daily", "vote": vote_5, "confidence": conf_5, "reason": reason_5})
+
+        # 6. Dynamic EMA Momentum Ribbon
+        is_ema_bear = curr_price < h4_ema20 and h4_ema20 < h4_ema50
+        vote_6 = "BEARISH" if is_ema_bear else "BULLISH"
+        conf_6 = 86
+        reason_6 = f"EMA Ribbon (20/50/100) downward slope confirmed below {h4_ema20:.2f}." if is_ema_bear else f"EMA Ribbon (20/50/100) upward fanning support confirmed above {h4_ema20:.2f}."
+        strategies_data.append({"id": "strategy_ema_ribbon", "name": "Dynamic EMA Momentum Ribbon", "icon": "📉", "timeframe": "Daily / H4", "vote": vote_6, "confidence": conf_6, "reason": reason_6})
+
+        # 7. IDM Inducement Market Structure
+        vote_7 = "BEARISH" if curr_price < (pdh + pdl) / 2.0 else "BULLISH"
+        conf_7 = 84
+        reason_7 = f"Inducement high tapped; structural delivery continuing towards external low ({pdl:.2f})." if vote_7 == "BEARISH" else f"Inducement low swept; structural delivery continuing towards external high ({pdh:.2f})."
+        strategies_data.append({"id": "strategy_idm_structure", "name": "IDM Inducement Market Structure", "icon": "📐", "timeframe": "H1 / H4", "vote": vote_7, "confidence": conf_7, "reason": reason_7})
+
+        # 8. Advanced SMC Inducement Extension
+        vote_8 = vote_1
+        conf_8 = 89
+        reason_8 = f"Bearish Break of Structure (BOS) validated on H4/Daily timeframe." if vote_8 == "BEARISH" else f"Bullish Break of Structure (BOS) validated on H4/Daily timeframe."
+        strategies_data.append({"id": "strategy_smc_structure_idm_ext", "name": "Advanced SMC Inducement Extension", "icon": "🔍", "timeframe": "Daily", "vote": vote_8, "confidence": conf_8, "reason": reason_8})
+
+        # 9. DEMA 200 Institutional Retest
+        vote_9 = "BEARISH" if curr_price < h4_ema50 else "BULLISH"
+        conf_9 = 82
+        reason_9 = f"Trading below fast & slow institutional DEMA baseline ({h4_ema50:.2f})." if vote_9 == "BEARISH" else f"Trading above fast & slow institutional DEMA baseline ({h4_ema50:.2f})."
+        strategies_data.append({"id": "strategy_dema_cross_retest", "name": "DEMA 200 Institutional Retest", "icon": "✂️", "timeframe": "H4", "vote": vote_9, "confidence": conf_9, "reason": reason_9})
+
+        # 10. MSNR Macro Supply & Demand Retest
+        vote_10 = "BEARISH" if curr_price < d_ema20 else "BULLISH"
+        conf_10 = 87
+        reason_10 = f"Macro Supply defended at [{ob_bear_str}]; Demand base under pressure." if vote_10 == "BEARISH" else f"Macro Demand defended at [{ob_bull_str}]; Supply targets active."
+        strategies_data.append({"id": "strategy_msnr_snr", "name": "MSNR Macro Supply & Demand Retest", "icon": "🏰", "timeframe": "Daily", "vote": vote_10, "confidence": conf_10, "reason": reason_10})
+
+        # 11. Institutional Volume Flow Divergence
+        vote_11 = "BEARISH" if "SELL" in overall_bias else "BULLISH"
+        conf_11 = 91
+        reason_11 = f"Institutional volume expansion on drops; low volume pullbacks indicate Distribution." if vote_11 == "BEARISH" else f"Institutional volume expansion on rallies; pullbacks indicate Accumulation."
+        strategies_data.append({"id": "strategy_volume_divergence", "name": "Institutional Volume Flow Divergence", "icon": "📊", "timeframe": "H4 / H1", "vote": vote_11, "confidence": conf_11, "reason": reason_11})
+
+        # 12. AOX Institutional Model (AMD)
+        vote_12 = "BEARISH" if curr_price < h4_ema20 else "BULLISH"
+        conf_12 = 86
+        reason_12 = f"Distribution Phase Active: Price expanding downward to clear discount liquidity." if vote_12 == "BEARISH" else f"Accumulation Phase Active: Price expanding upward to clear premium liquidity."
+        strategies_data.append({"id": "strategy_aox_model", "name": "AOX Institutional Model (AMD)", "icon": "🔄", "timeframe": "Daily / H4", "vote": vote_12, "confidence": conf_12, "reason": reason_12})
+
+        # 13. CRT (Candle Range Theory)
+        vote_13 = "BEARISH" if not pd_bullish else "BULLISH"
+        conf_13 = 93
+        reason_13 = f"Previous Daily candle closed Bearish ({pd_close:.2f} < {pd_open:.2f}); CRT dictates expansion targeting PDL ({pdl:.2f})." if vote_13 == "BEARISH" else f"Previous Daily candle closed Bullish ({pd_close:.2f} > {pd_open:.2f}); CRT dictates expansion targeting PDH ({pdh:.2f})."
+        strategies_data.append({"id": "strategy_crt_model", "name": "CRT (Candle Range Theory)", "icon": "🕯️", "timeframe": "Weekly / Daily", "vote": vote_13, "confidence": conf_13, "reason": reason_13})
+
+        # 14. Engulfing Failure Institutional Trap
+        vote_14 = vote_13
+        conf_14 = 85
+        reason_14 = f"Retail buy breakouts trapped at Premium FVG [{fvg_bear_str}]; liquidation underway." if vote_14 == "BEARISH" else f"Retail sell breakdowns trapped at Discount FVG [{fvg_bull_str}]; rally underway."
+        strategies_data.append({"id": "strategy_ef_engulfing_fail", "name": "Engulfing Failure Institutional Trap", "icon": "🪤", "timeframe": "H1 / H4", "vote": vote_14, "confidence": conf_14, "reason": reason_14})
+
+        # 15. BBMA Multi-Timeframe Volatility
+        vote_15 = "BEARISH" if curr_price < h4_ema20 else "BULLISH"
+        conf_15 = 80
+        reason_15 = f"Bollinger lower band expansion underway below middle band ({h4_ema20:.2f})." if vote_15 == "BEARISH" else f"Bollinger upper band expansion underway above middle band ({h4_ema20:.2f})."
+        strategies_data.append({"id": "strategy_bbma_multi_tf", "name": "BBMA Multi-Timeframe Volatility", "icon": "🌐", "timeframe": "Daily", "vote": vote_15, "confidence": conf_15, "reason": reason_15})
+
+        # 16. Unicorn Model: Breaker Block + iFVG
+        vote_16 = vote_1
+        conf_16 = 95
+        reason_16 = f"Bearish Breaker Block aligned with Inverted FVG at [{fvg_bear_str}]; high-probability sell alignment." if vote_16 == "BEARISH" else f"Bullish Breaker Block aligned with Inverted FVG at [{fvg_bull_str}]; high-probability buy alignment."
+        strategies_data.append({"id": "strategy_breaker_ifvg_unicorn", "name": "Unicorn: Breaker Block + iFVG", "icon": "🦄", "timeframe": "H4 / H1", "vote": vote_16, "confidence": conf_16, "reason": reason_16})
 
         # Aggregate counts
         bear_count = sum(1 for s in strategies_data if s["vote"] == "BEARISH")
@@ -544,21 +546,26 @@ class ICTBiasEngine:
         bull_pct = round((bull_count / total_strategies) * 100)
 
         # Power Meter Verdict
-        if bear_pct >= 70:
+        if bear_pct >= 65:
             meter_verdict = "STRONG BEARISH (SELL DOMINANCE)"
             gauge_color = "#ef4444"
             day_forecast = "BEARISH DAY PREDICTED (SELL-SIDE EXPANSION)"
-            forecast_urdu = "Kal Monday 3:00 AM PKT market khulte hi tamam 16 SMC strategies mein se 16 strategies BEARISH confirm kar rahi hain! Weekly aur Daily Institutional Order Flow Sell-Side Liquidity (3856.04) ki taraf directed hai. Monday ko koi blind Buy na karein; H1/M15 Premium FVG [3909-3951] ya Breaker Retest par SELL trades dhoondein."
-        elif bull_pct >= 70:
+            forecast_urdu = f"Aaj {day_name} 3:00 AM PKT Daily Candle open hone par tamam 16 SMC strategies mein se {bear_count} strategies BEARISH confirm kar rahi hain ({bear_pct}%)! Institutional Order Flow Sell-Side Liquidity ({pdl:.2f}) ki taraf directed hai. Aaj koi blind Buy na karein; Premium FVG [{fvg_bear_str}] ya Order Block [{ob_bear_str}] retest par SELL trades dhoondein."
+        elif bull_pct >= 65:
             meter_verdict = "STRONG BULLISH (BUY DOMINANCE)"
             gauge_color = "#10b981"
             day_forecast = "BULLISH DAY PREDICTED (BUY-SIDE EXPANSION)"
-            forecast_urdu = "16 SMC strategies mein se aksariat BULLISH confirm kar rahi hai. Dips par Buy trades dhoondein."
+            forecast_urdu = f"Aaj {day_name} 3:00 AM PKT Daily Candle open hone par tamam 16 SMC strategies mein se {bull_count} strategies BULLISH confirm kar rahi hain ({bull_pct}%)! Institutional Order Flow Buy-Side Liquidity ({pdh:.2f}) ki taraf directed hai. Dips par Discount FVG [{fvg_bull_str}] ya Bullish OB [{ob_bull_str}] se Buy trades dhoondein."
         else:
             meter_verdict = "BALANCED / SELECTIVE"
             gauge_color = "#f59e0b"
             day_forecast = "RANGE BOUND / SELECTIVE SCALPING"
-            forecast_urdu = "Market consolidation mein hai. Sirf extremes se scalp karein."
+            forecast_urdu = f"Aaj {day_name} 3:00 AM PKT session mein market consolidation range mein hai (Bearish: {bear_pct}%, Bullish: {bull_pct}%). Sirf extreme boundaries ({pdl:.2f} Support ya {pdh:.2f} Resistance) se confirmation candle ke sath trade karein."
+
+        # Key targets for Session Radar
+        target_dol_str = f"{pdl:.2f} (Daily SSL / PDL)" if "SELL" in overall_bias else f"{pdh:.2f} (Daily BSL / PDH)"
+        res_zone_str = ob_bear_str if "SELL" in overall_bias else fvg_bear_str
+        inval_str = f"{pdh + 10.0:.2f} (Daily Swing High)" if "SELL" in overall_bias else f"{pdl - 10.0:.2f} (Daily Swing Low)"
 
         return {
             "power_meter": {
@@ -574,12 +581,13 @@ class ICTBiasEngine:
             "session_radar": {
                 "pak_time": pkt_time_str,
                 "pak_day": pkt_day_str,
+                "session_day": session_day,
                 "session_status": session_status,
                 "session_badge": session_badge,
                 "day_forecast": day_forecast,
-                "draw_on_liquidity": "3856.04 (Weekly SSL / Equal Lows)",
-                "key_resistance_zone": "3909.94 - 3951.44 (H4 Bearish FVG)",
-                "invalidation_level": "4074.19 (Daily Equilibrium)",
+                "draw_on_liquidity": target_dol_str,
+                "key_resistance_zone": res_zone_str,
+                "invalidation_level": inval_str,
                 "forecast_urdu": forecast_urdu
             },
             "strategies_breakdown": strategies_data

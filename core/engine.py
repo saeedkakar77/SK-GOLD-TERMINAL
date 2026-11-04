@@ -457,11 +457,13 @@ class SignalEngine:
             try:
                 # 0. Update ICT higher-timeframe bias in background (cached so web requests are instant)
                 now_ts = time.time()
-                if self.cached_bias is None or (now_ts - self.last_bias_update > 60):
+                if self.cached_bias is None or (now_ts - self.last_bias_update > 20):
                     try:
                         from core.bias_engine import ICTBiasEngine
-                        self.cached_bias = ICTBiasEngine.analyze_market_bias("XAUUSD", self.data_feed)
-                        self.last_bias_update = now_ts
+                        fresh_b = ICTBiasEngine.analyze_market_bias("XAUUSD", self.data_feed)
+                        if fresh_b and fresh_b.get("timeframes"):
+                            self.cached_bias = fresh_b
+                            self.last_bias_update = now_ts
                     except Exception as be:
                         pass
 
@@ -656,14 +658,17 @@ class SignalEngine:
         return sig.__dict__
 
     def get_bias_report(self):
-        if self.cached_bias:
+        now_ts = time.time()
+        if self.cached_bias and (now_ts - self.last_bias_update < 15):
             return self.cached_bias
         try:
             from core.bias_engine import ICTBiasEngine
             with self.lock:
                 sym = self.active_symbol
-            self.cached_bias = ICTBiasEngine.analyze_market_bias(sym, self.data_feed)
-            self.last_bias_update = time.time()
-            return self.cached_bias
+            fresh_b = ICTBiasEngine.analyze_market_bias(sym, self.data_feed)
+            if fresh_b and fresh_b.get("timeframes"):
+                self.cached_bias = fresh_b
+                self.last_bias_update = now_ts
+            return self.cached_bias or fresh_b or {}
         except Exception:
-            return {}
+            return self.cached_bias or {}
