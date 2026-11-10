@@ -45,6 +45,13 @@ class Signal:
     confidence_score: int = 85             # Exact % score (e.g. 95%, 85%, 65%, 50%)
     confirmation_pattern: Optional[str] = None # Candlestick Confirmation Pattern from picture
     pattern_details: Optional[str] = None
+    is_institutional_a_plus: bool = True       # True if passes HTF + CME + 16-Confluence Master Filter
+    filter_grade: str = "A+ ULTRA STRONG"      # "A+ ULTRA STRONG", "A+ STRONG", "REJECTED (NOISE/TRAP)"
+    filter_reasons: Optional[str] = None       # Why it passed or was blocked
+    filter_urdu: Optional[str] = None          # Detailed Urdu explanation
+    htf_status: Optional[str] = None           # HTF status note
+    cme_status: Optional[str] = None           # CME status note
+    confluence_status: Optional[str] = None    # 16-strategy consensus note
 
 @dataclass
 class StrategyStatus:

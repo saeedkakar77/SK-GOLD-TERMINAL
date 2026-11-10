@@ -25,6 +25,8 @@ from strategies.strategy_crt_model import CRTModelStrategy
 from strategies.strategy_ef_engulfing_fail import FailedEngulfingStrategy
 from strategies.strategy_bbma_multi_tf import BBMAMultiTFStrategy
 from strategies.strategy_breaker_ifvg_unicorn import BreakerIFVGUnicornStrategy
+from core.institutional_filter import InstitutionalFilterEngine
+from core.cme_fetcher import CMEGoldDataFetcher
 
 class SignalEngine:
     def __init__(self):
@@ -66,6 +68,7 @@ class SignalEngine:
         self.seen_signal_signatures = set()
         self.cached_bias = None
         self.last_bias_update = 0
+        self.strict_institutional_filter = True
 
         # Seed completed past Gold trades so Win/Loss history is immediately populated
         self._seed_initial_history()
@@ -352,6 +355,24 @@ class SignalEngine:
         d["is_tp_hit"] = bool(d.get("result") == "WIN" or d.get("tp1_hit") or d.get("tp2_hit"))
         d["is_sl_hit"] = bool(d.get("result") == "LOSS" or d.get("sl_hit"))
 
+        # Attach Institutional Master Filter evaluation (HTF + CME + 16 Strategies)
+        if "is_institutional_a_plus" not in d or d["is_institutional_a_plus"] is None:
+            cme_report = CMEGoldDataFetcher.get_cme_analysis(spot_price=d.get("entry_price", curr_p))
+            f_eval = InstitutionalFilterEngine.evaluate_signal(
+                s,
+                htf_bias_report=self.cached_bias,
+                cme_report=cme_report,
+                power_meter=self.cached_bias.get("power_meter_16") if self.cached_bias else None
+            )
+            d["is_institutional_a_plus"] = f_eval["is_a_plus"]
+            d["filter_grade"] = f_eval["grade"]
+            d["filter_reasons"] = "; ".join(f_eval["reasons_pass"] if f_eval["is_a_plus"] else f_eval["reasons_block"])
+            d["filter_urdu"] = f_eval["urdu_summary"]
+            d["htf_status"] = f_eval["pillars"]["htf"]["detail"]
+            d["cme_status"] = f_eval["pillars"]["cme"]["detail"]
+            d["confluence_status"] = f_eval["pillars"]["strategies_confluence"]["detail"]
+            d["filter_pillars"] = f_eval["pillars"]
+
         return d
 
     def get_signals(self) -> List[Dict]:
@@ -435,6 +456,15 @@ class SignalEngine:
                         week_trades.append(s)
 
             overall_metrics = calc_metrics(closed)
+            today_a_plus = [s for s in today_trades if getattr(s, 'is_institutional_a_plus', False)]
+            week_a_plus = [s for s in week_trades if getattr(s, 'is_institutional_a_plus', False)]
+            overall_a_plus = [s for s in closed if getattr(s, 'is_institutional_a_plus', False)]
+            daily_a_plus_metrics = calc_metrics(today_a_plus)
+            weekly_a_plus_metrics = calc_metrics(week_a_plus)
+            overall_a_plus_metrics = calc_metrics(overall_a_plus)
+            daily_a_plus_metrics["label"] = f"Today A+ Institutional ({today_start.strftime('%a, %d %b')})"
+            weekly_a_plus_metrics["label"] = f"This Week A+ Institutional"
+            overall_a_plus_metrics["label"] = f"All-Time A+ Institutional"
             daily_metrics = calc_metrics(today_trades)
             weekly_metrics = calc_metrics(week_trades)
 
@@ -457,6 +487,11 @@ class SignalEngine:
                 "daily": daily_metrics,
                 "weekly": weekly_metrics,
                 "overall": overall_metrics,
+                "daily_a_plus": daily_a_plus_metrics,
+                "weekly_a_plus": weekly_a_plus_metrics,
+                "overall_a_plus": overall_a_plus_metrics,
+                "blocked_trades_count": len(closed) - len(overall_a_plus),
+                "strict_filter_active": self.strict_institutional_filter,
                 "total_closed": overall_metrics["total_closed"],
                 "wins": overall_metrics["wins"],
                 "losses": overall_metrics["losses"],
@@ -713,6 +748,33 @@ class SignalEngine:
                         sig.is_ultra_strong = False
                         if f"({sig.confidence_score}%)" not in sig.reason:
                             sig.reason += f" | {conf_eval['badge_emoji']} {sig.strength_grade} ({sig.confidence_score}% Conf) [{sig.confirmation_pattern}]"
+
+                    # -----------------------------------------------------
+                    # CHECKER 3: MASTER INSTITUTIONAL CONFLUENCE FILTER (HTF + CME + 16 STRATEGIES)
+                    # -----------------------------------------------------
+                    cme_report = CMEGoldDataFetcher.get_cme_analysis(spot_price=last_closed_candle.close)
+                    power_meter = self.cached_bias.get("power_meter_16") if self.cached_bias else None
+                    filter_eval = InstitutionalFilterEngine.evaluate_signal(
+                        sig=sig,
+                        htf_bias_report=self.cached_bias,
+                        cme_report=cme_report,
+                        candles=closed_candles,
+                        power_meter=power_meter
+                    )
+
+                    sig.is_institutional_a_plus = filter_eval["is_a_plus"]
+                    sig.filter_grade = filter_eval["grade"]
+                    sig.filter_reasons = "; ".join(filter_eval["reasons_pass"] if filter_eval["is_a_plus"] else filter_eval["reasons_block"])
+                    sig.filter_urdu = filter_eval["urdu_summary"]
+                    sig.htf_status = filter_eval["pillars"]["htf"]["detail"]
+                    sig.cme_status = filter_eval["pillars"]["cme"]["detail"]
+                    sig.confluence_status = filter_eval["pillars"]["strategies_confluence"]["detail"]
+
+                    # STRICT GATEKEEPER: Drop counter-trend, weak 50%, or unconfirmed noise trades!
+                    if self.strict_institutional_filter and not filter_eval["is_a_plus"]:
+                        primary_block = filter_eval.get("primary_block_reason") or "Failed Institutional Gatekeeper"
+                        print(f"🛡️ [INSTITUTIONAL GATEKEEPER BLOCKED] {sig.action} on {sig.symbol} [{sig.timeframe.upper()}] via {sig.strategy_name} REJECTED: {primary_block}")
+                        continue
 
                     # Strict Signature: Unique to Strategy + Symbol + TF + Exact Candle Close Time!
                     close_time_str = last_closed_candle.time.strftime("%Y-%m-%d %H:%M:%S")

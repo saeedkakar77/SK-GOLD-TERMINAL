@@ -234,7 +234,9 @@ class ICTBiasEngine:
             action = "LOOK STRICTLY FOR BUY SIGNALS (FOLLOW CME 400K+ ORDER FLOW)"
             regime = "400K+ INSTITUTIONAL ACCUMULATION (BULL EXPANSION)"
             badge_color = "#10b981"
-            today_rule = f"CME Open Interest (+8,562 contracts, 400,666 Total OI) 400k benchmark se PLUS ho chuka hai! Macro Institutional Order Flow 100% BULLISH hai. Dips par CME Put Wall [{cme_report.get('put_wall_support', 4000.00):.2f}] ya Discount FVG se BUY entries lein. Target: ({res_d['erl_bsl']:.2f})."
+            cme_oi_tot = cme_report.get("open_interest_total", 400000)
+            cme_oi_chg = cme_report.get("open_interest_change", 0)
+            today_rule = f"CME Open Interest ({'+' if cme_oi_chg >= 0 else ''}{cme_oi_chg:,} contracts, {cme_oi_tot:,} Total OI) 400k benchmark se PLUS ho chuka hai! Macro Institutional Order Flow 100% BULLISH hai. Dips par CME Put Wall [{cme_report.get('put_wall_support', 4000.00):.2f}] ya Discount FVG se BUY entries lein. Target: ({res_d['erl_bsl']:.2f})."
             scalp_advice = "BUY ON DIPS (Discount Pullbacks)"
         elif res_w["bias"] == "BEARISH" and res_d["bias"] == "BEARISH":
             overall_bias = "STRONG SELL"

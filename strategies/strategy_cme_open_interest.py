@@ -36,10 +36,10 @@ class CMEOpenInterestStrategy(BaseStrategy):
         cme_report = CMEGoldDataFetcher.get_cme_analysis(spot_price=curr.close)
         is_cme_bullish = (cme_report.get("vote") == "BULLISH")
         is_cme_bearish = (cme_report.get("vote") == "BEARISH")
-        total_oi = cme_report.get("open_interest_total", 400666)
-        oi_change = cme_report.get("open_interest_change", 8562)
-        cme_put_wall = cme_report.get("put_wall_support", 4000.0)
-        cme_call_wall = cme_report.get("call_wall_resistance", 4075.0)
+        total_oi = cme_report.get("open_interest_total", 407133)
+        oi_change = cme_report.get("open_interest_change", 6467)
+        cme_put_wall = cme_report.get("put_wall_support", 4100.0)
+        cme_call_wall = cme_report.get("call_wall_resistance", 4150.0)
 
         # 2. Local Market Geometry
         lookback = min(len(candles), 25)

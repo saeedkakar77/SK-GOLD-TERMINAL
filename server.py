@@ -36,6 +36,13 @@ from core.engine import SignalEngine
 # Initialize the master trading engine
 engine = SignalEngine()
 
+# Initialize 24/7 background auto-updater for live CME COMEX Gold Open Interest
+try:
+    from core.cme_fetcher import CMEGoldDataFetcher
+    CMEGoldDataFetcher.start_background_updater()
+except Exception:
+    pass
+
 PORT = int(os.environ.get("PORT", 5000))
 HTML_PATH = os.path.join(os.path.dirname(__file__), "templates", "index.html")
 
@@ -144,6 +151,11 @@ class TradingAppHandler(BaseHTTPRequestHandler):
                 self._send_json(engine.get_active_signals())
             elif self.path == "/api/signals/history":
                 self._send_json(engine.get_signal_history())
+            elif self.path in ["/api/cme/sync", "/api/cme/live"]:
+                from core.cme_fetcher import CMEGoldDataFetcher
+                cme_data = CMEGoldDataFetcher.get_cme_analysis(force_refresh=True)
+                engine.cached_bias = None
+                self._send_json({"status": "ok", "cme": cme_data})
             elif self.path == "/api/bias":
                 self._send_json(engine.get_bias_report())
             elif self.path == "/api/pinescript":
@@ -153,6 +165,11 @@ class TradingAppHandler(BaseHTTPRequestHandler):
                     with open(pine_file, "r", encoding="utf-8") as pf:
                         script_txt = pf.read()
                 self._send_json({"script": script_txt, "filename": "SK_PERFECT_ENTRY_WITH_LIVE_PNL_TRADINGVIEW.pine"})
+            elif self.path == "/api/filter/status":
+                self._send_json({
+                    "strict_institutional_filter": engine.strict_institutional_filter,
+                    "stats": engine.get_history_stats()
+                })
             elif self.path == "/api/pairs":
                 self._send_json(engine.get_pairs())
             elif self.path == "/api/info":
@@ -262,6 +279,20 @@ self.addEventListener('fetch', function(e) {});"""
             elif self.path == "/api/test-signal":
                 sig = engine.add_demo_signal()
                 self._send_json({"status": "ok", "signal": sig})
+
+            elif self.path == "/api/filter/toggle":
+                strict = payload.get("strict")
+                if strict is None:
+                    engine.strict_institutional_filter = not engine.strict_institutional_filter
+                else:
+                    engine.strict_institutional_filter = bool(strict)
+                self._send_json({"status": "ok", "strict_institutional_filter": engine.strict_institutional_filter})
+
+            elif self.path in ["/api/cme/update", "/api/cme/sync"]:
+                from core.cme_fetcher import CMEGoldDataFetcher
+                updated_report = CMEGoldDataFetcher.update_cme_report(payload)
+                engine.cached_bias = None
+                self._send_json({"status": "ok", "cme": updated_report})
 
             elif self.path == "/api/pairs/toggle":
                 symbol = payload.get("symbol")
