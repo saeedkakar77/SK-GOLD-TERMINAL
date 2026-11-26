@@ -369,20 +369,20 @@ class QuantCouncilEngine:
         hunter = {
             "id": "hunter",
             "name": "AI 3: Hunter",
-            "role": "16-SMC Strategy Sniper & A+ Signal Scanner",
+            "role": "17-SMC Strategy Sniper & A+ Signal Scanner",
             "avatar": "🎯",
             "status": "HUNTING" if active_sigs > 0 else "SCANNING",
             "vote": hunter_vote,
             "confidence": 92,
             "badge_color": "#10b981" if a_plus_sigs > 0 else "#3b82f6",
             "summary": (
-                f"All 16 Institutional SMC Strategies ACTIVE & scanning XAUUSD bar-by-bar: "
-                f"FVG, OB, Unicorn Breaker, CRT, Liquidity Sweep, SMT, AOX, BBMA, DEMA, MSNR, IDM, EF, Vol Div, CME OI, HTF Liq, SMC-IDM-EXT. "
+                f"All 17 Institutional SMC Strategies ACTIVE & scanning XAUUSD bar-by-bar: "
+                f"Quant Pilot 7-AI Sweep, FVG, OB, Unicorn Breaker, CRT, Liquidity Sweep, SMT, AOX, BBMA, DEMA, MSNR, IDM, EF, Vol Div, CME OI, HTF Liq, SMC-IDM-EXT. "
                 f"Strategy Consensus: {consensus_pct}% {htf_vote}. "
                 f"Active A+ Signals: {a_plus_sigs}.{last_a_desc}"
             ),
             "metrics": {
-                "strategies_monitored": 16,
+                "strategies_monitored": 17,
                 "strategies_all_enabled": True,
                 "strategy_consensus_pct": consensus_pct,
                 "active_a_plus_signals": a_plus_sigs,

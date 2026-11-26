@@ -25,6 +25,7 @@ from strategies.strategy_crt_model import CRTModelStrategy
 from strategies.strategy_ef_engulfing_fail import FailedEngulfingStrategy
 from strategies.strategy_bbma_multi_tf import BBMAMultiTFStrategy
 from strategies.strategy_breaker_ifvg_unicorn import BreakerIFVGUnicornStrategy
+from strategies.strategy_quantpilot_sweep import QuantPilotSweepStrategy
 from core.institutional_filter import InstitutionalFilterEngine
 from core.cme_fetcher import CMEGoldDataFetcher
 
@@ -47,10 +48,11 @@ class SignalEngine:
             "strategy_crt_model": CRTModelStrategy(),
             "strategy_ef_engulfing_fail": FailedEngulfingStrategy(),
             "strategy_bbma_multi_tf": BBMAMultiTFStrategy(),
-            "strategy_breaker_ifvg_unicorn": BreakerIFVGUnicornStrategy()
+            "strategy_breaker_ifvg_unicorn": BreakerIFVGUnicornStrategy(),
+            "strategy_quantpilot_sweep": QuantPilotSweepStrategy()
         }
         
-        # All 16 Strategies permanently ACTIVE at all times
+        # All 17 Strategies permanently ACTIVE at all times
         for s_id, s in self.strategies.items():
             s.enabled = True
         
