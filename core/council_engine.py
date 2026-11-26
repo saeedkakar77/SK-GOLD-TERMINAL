@@ -1,14 +1,15 @@
 """
 7-AI QUANT COUNCIL & METATRADER 5 (MT5) AUTONOMOUS EXECUTION ENGINE
 Adapted from Quant Pilot (by Sumedh Kumar) and integrated with SK Gold Terminal.
+Configured for Dominion Markets (Account: 144880 · Saeed Muhammad · Server: DominionMarkets-Live).
 
 The 7 Autonomous AI Agents:
-1. SCOUT        - Ingests real-time XAUUSD tick, spread, and multi-timeframe candles from MT5.
+1. SCOUT        - Ingests real-time XAUUSD.p tick, spread (9 pts), and multi-timeframe candles from Dominion Markets MT5.
 2. CARTOGRAPHER - Maps Key Liquidity: PDH/PDL, Asian High/Low, 4H Swings, Equal H/L & HTF ERL/IRL.
 3. HUNTER       - Hunts for Liquidity Sweeps, Displacement Candle Closes, and 16 SMC Strategy Setups.
 4. ANALYST      - Evaluates Institutional Confluence: CME 400K+ Open Interest & Options Strike Walls.
-5. GUARDIAN     - AEGIS Risk & Capital Gatekeeper: 1% max risk on $10,283 balance, 4% daily DD kill switch.
-6. EXECUTIONER  - Direct MT5 Order Sniper: Normalizes lot size, fires SL/TP brackets, manages breakeven.
+5. GUARDIAN     - AEGIS Risk & Capital Gatekeeper: 1% max risk on $1,000 balance, 4% daily DD kill switch.
+6. EXECUTIONER  - Direct MT5 Order Sniper: Normalizes lot size on XAUUSD.p, fires SL/TP brackets, manages breakeven.
 7. CHRONICLER   - Complete Journaling & Audit: SQLite trade records, agent decision traces, live PnL.
 """
 
@@ -51,9 +52,9 @@ class QuantCouncilEngine:
             min_confidence=7
         )
 
-        # MT5 Credentials configured for Saeed Muhammad's active terminal
-        self.mt5_login = 291645
-        self.mt5_server = "FundedTraderMarkets-Server"
+        # MT5 Credentials configured for Saeed Muhammad's active Dominion Markets account
+        self.mt5_login = 144880
+        self.mt5_server = "DominionMarkets-Live"
         self.mt5_path = r"C:\Program Files\HFM Metatrader 5\terminal64.exe"
         self.mt5_magic = 20260101
 
@@ -68,6 +69,12 @@ class QuantCouncilEngine:
             deviation=20,
             allow_live_env=True
         )
+
+        # Map canonical XAUUSD to Dominion Markets instrument name: XAUUSD.p
+        self.bridge.set_symbol_map({
+            "XAUUSD": "XAUUSD.p",
+            "BTCUSD": "BTCUSD.p"
+        })
 
         # Council Operating State
         self.mode = "SEMI_AUTO"  # "PAPER" | "SEMI_AUTO" (1-Click) | "FULL_AUTO" (Hands-Free)
@@ -120,8 +127,12 @@ class QuantCouncilEngine:
         acc = health.get("account") or {}
         term = health.get("terminal") or {}
 
-        balance = acc.get("balance", 10283.92)
-        equity = acc.get("equity", 10283.92)
+        login_num = acc.get("login", self.mt5_login)
+        acc_name = acc.get("name", "Saeed Muhammad")
+        acc_server = acc.get("server", self.mt5_server)
+        balance = float(acc.get("balance", 1000.0))
+        equity = float(acc.get("equity", 1000.0))
+        leverage = acc.get("leverage", 500)
         algo_allowed = bool(term.get("trade_allowed", False))
         connected = bool(term.get("connected", False))
 
@@ -140,11 +151,11 @@ class QuantCouncilEngine:
             "vote": "READY",
             "confidence": 98,
             "badge_color": "#10b981",
-            "summary": f"Ingesting XAUUSD live quotes from MT5 Terminal. Spread: ~38 pts. Live Tick & M5 candles flowing smoothly.",
+            "summary": f"Ingesting XAUUSD.p live quotes from Dominion Markets MT5. Spread: ~9 pts (0.09). Raw ECN spread flowing smoothly.",
             "metrics": {
-                "feed": "MT5 Terminal" if connected else "Demo Feed",
-                "instrument": "XAUUSD",
-                "spread_points": 38,
+                "feed": "Dominion Markets MT5" if connected else "Demo Feed",
+                "instrument": "XAUUSD.p",
+                "spread_points": 9,
                 "terminal_connected": connected
             }
         }
@@ -177,7 +188,7 @@ class QuantCouncilEngine:
             "vote": "BUY_PREPARED",
             "confidence": 92,
             "badge_color": "#10b981",
-            "summary": "Scanning 16 Institutional SMC Strategies (Unicorn, Breaker, FVG, CRT, Stop-Hunt Reversals). Tracking Discount liquidity absorption.",
+            "summary": "Scanning 16 Institutional SMC Strategies (Unicorn, Breaker, FVG, CRT, Stop-Hunt Reversals). Tracking Discount liquidity absorption on XAUUSD.p.",
             "metrics": {
                 "strategies_monitored": 16,
                 "sweep_tolerance": "10-25 pips on XAU",
@@ -213,7 +224,7 @@ class QuantCouncilEngine:
             "vote": "APPROVED" if not self.kill_switch_active else "VETOED",
             "confidence": 99,
             "badge_color": "#10b981" if not self.kill_switch_active else "#ef4444",
-            "summary": f"Balance ${balance:,.2f} protected. Max Risk 1.0% (${balance * 0.01:,.2f}), Daily DD Kill Limit 4.0% (${balance * 0.04:,.2f}). Min RR 1:2.0 enforced.",
+            "summary": f"Dominion Account Balance ${balance:,.2f} protected. Max Risk 1.0% (${balance * 0.01:,.2f}), Daily DD Kill Limit 4.0% (${balance * 0.04:,.2f}). Min RR 1:2.0 enforced.",
             "metrics": {
                 "max_risk_pct": f"{self.rules.risk_per_trade_pct}%",
                 "max_risk_dollars": f"${balance * (self.rules.risk_per_trade_pct / 100.0):.2f}",
@@ -232,9 +243,9 @@ class QuantCouncilEngine:
             "vote": "READY",
             "confidence": 95,
             "badge_color": "#10b981" if algo_allowed else "#f59e0b",
-            "summary": f"Direct MT5 Bridge active for XAUUSD. Mode: {self.mode}. Algo Trading: {'ENABLED' if algo_allowed else 'DISABLED (Turn ON in MT5)'}.",
+            "summary": f"Direct MT5 Bridge active for XAUUSD.p on DominionMarkets-Live. Mode: {self.mode}. Algo Trading: {'ENABLED' if algo_allowed else 'DISABLED (Turn ON in MT5)'}.",
             "metrics": {
-                "target_symbol": "XAUUSD",
+                "target_symbol": "XAUUSD.p",
                 "order_mode": self.mode,
                 "algo_trading_terminal": algo_allowed,
                 "magic_number": self.mt5_magic
@@ -251,7 +262,7 @@ class QuantCouncilEngine:
             "vote": "LOGGING",
             "confidence": 100,
             "badge_color": "#8b5cf6",
-            "summary": "SQLite journal & audit ledger active. Tracking every agent vote, order slip, Win/Loss result, and trailing stop evolution.",
+            "summary": "SQLite journal & audit ledger active. Tracking every agent vote, order slip, Win/Loss result, and trailing stop evolution on Dominion Markets.",
             "metrics": {
                 "db": "quantpilot.db",
                 "logged_events": len(self.execution_logs),
@@ -274,16 +285,18 @@ class QuantCouncilEngine:
             "kill_switch_active": self.kill_switch_active,
             "risk_per_trade_pct": self.rules.risk_per_trade_pct,
             "account": {
-                "login": self.mt5_login,
-                "name": acc.get("name", "8 - Saeed Muhammad"),
-                "server": self.mt5_server,
+                "login": login_num,
+                "name": acc_name,
+                "server": acc_server,
                 "balance": balance,
                 "equity": equity,
                 "currency": acc.get("currency", "USD"),
-                "leverage": acc.get("leverage", 100),
+                "leverage": leverage,
                 "terminal_connected": connected,
                 "algo_trading_allowed": algo_allowed,
-                "trade_mode": acc.get("trade_mode", "REAL")
+                "trade_mode": acc.get("trade_mode", "LIVE"),
+                "broker": "Dominion Markets LLC",
+                "symbol": "XAUUSD.p"
             },
             "open_positions": self.get_open_positions(),
             "agents": agents,
@@ -314,9 +327,9 @@ class QuantCouncilEngine:
         return self.rules.risk_per_trade_pct
 
     def send_test_order(self) -> Dict[str, Any]:
-        """Places a 0.01 lot test order on XAUUSD and closes it after 3 seconds."""
+        """Places a 0.01 lot test order on XAUUSD.p and closes it after 3 seconds."""
         res = self.bridge.send_test_order(instrument="XAUUSD", hold_seconds=3.0)
-        self.log_event("TEST_ORDER", f"Test order result: {res.get('ok')} - {res.get('error') or 'Filled and closed'}")
+        self.log_event("TEST_ORDER", f"Test order on Dominion Markets: {res.get('ok')} - {res.get('error') or 'Filled and closed'}")
         return res
 
     def emergency_kill_switch(self) -> Dict[str, Any]:
@@ -324,7 +337,7 @@ class QuantCouncilEngine:
         self.kill_switch_active = True
         closed = self.bridge.close_all_magic()
         res_list = [c.to_dict() for c in closed]
-        self.log_event("KILL_SWITCH", f"Emergency Kill Switch Triggered! Closed {len(res_list)} positions.")
+        self.log_event("KILL_SWITCH", f"Emergency Kill Switch Triggered! Closed {len(res_list)} positions on Dominion Markets.")
         return {
             "status": "ok",
             "kill_switch_active": True,
@@ -334,13 +347,13 @@ class QuantCouncilEngine:
 
     def reset_kill_switch(self) -> bool:
         self.kill_switch_active = False
-        self.log_event("KILL_SWITCH_RESET", "Kill switch deactivated. Trading permitted.")
+        self.log_event("KILL_SWITCH_RESET", "Kill switch deactivated. Trading permitted on Dominion Markets.")
         return True
 
     def execute_council_trade(self, signal_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Executes a council-approved trade on MT5 (or paper).
-        Calculates exact lot size from risk rules, enforces stops, and calls MT5Bridge.
+        Executes a council-approved trade on Dominion Markets MT5 (or paper).
+        Calculates exact lot size based on account balance ($1,000) and risk %.
         """
         if self.kill_switch_active:
             return {"ok": False, "message": "Execution BLOCKED: Kill Switch is currently active."}
@@ -354,10 +367,10 @@ class QuantCouncilEngine:
         if entry_price <= 0 or stop_loss <= 0:
             return {"ok": False, "message": "Invalid trade levels: Entry or SL missing."}
 
-        # Calculate Lot Size based on Account Balance & Risk %
+        # Calculate Lot Size based on Dominion Markets Account Balance & Risk %
         health = self.get_mt5_health()
         acc = health.get("account") or {}
-        balance = float(acc.get("balance", 10283.92))
+        balance = float(acc.get("balance", 1000.0))
         risk_dollars = balance * (self.rules.risk_per_trade_pct / 100.0)
 
         sl_distance = abs(entry_price - stop_loss)
@@ -368,18 +381,18 @@ class QuantCouncilEngine:
         # 0.01 lot = $1.00 per $1 move
         # Lot = risk_dollars / (sl_distance * 100)
         raw_volume = risk_dollars / (sl_distance * 100.0)
-        volume = max(0.01, min(20.0, round(raw_volume, 2)))
+        volume = max(0.01, min(500.0, round(raw_volume, 2)))
 
         if self.mode == "PAPER":
-            msg = f"[PAPER TRADE EXECUTED] {direction} {volume} XAUUSD @ {entry_price:.2f} | SL: {stop_loss:.2f} | TP: {take_profit:.2f}"
+            msg = f"[PAPER TRADE EXECUTED] {direction} {volume} XAUUSD.p @ {entry_price:.2f} | SL: {stop_loss:.2f} | TP: {take_profit:.2f}"
             self.log_event("PAPER_TRADE", msg)
             return {"ok": True, "mode": "PAPER", "message": msg, "volume": volume, "ticket": 999999}
 
-        # Live MT5 Execution via MT5Bridge
+        # Live MT5 Execution on Dominion Markets (XAUUSD.p) via MT5Bridge
         tp2 = float(signal_data.get("take_profit_2") or (entry_price + (take_profit - entry_price) * 1.5))
         order_res = self.bridge.place_order(
             signal_id=signal_id,
-            instrument="XAUUSD",
+            instrument="XAUUSD", # Automatically mapped to XAUUSD.p by bridge
             direction=direction,
             volume=volume,
             sl=stop_loss,
@@ -388,7 +401,7 @@ class QuantCouncilEngine:
         )
 
         res_dict = order_res.to_dict()
-        self.log_event("MT5_ORDER", f"{direction} {volume} lot XAUUSD -> Retcode: {res_dict.get('retcode')}, Ticket: {res_dict.get('ticket')}")
+        self.log_event("MT5_ORDER", f"{direction} {volume} lot XAUUSD.p -> Retcode: {res_dict.get('retcode')}, Ticket: {res_dict.get('ticket')}")
         return res_dict
 
     def log_event(self, event_type: str, details: str):
@@ -418,10 +431,11 @@ class QuantCouncilEngine:
 if __name__ == "__main__":
     council = QuantCouncilEngine.get_instance()
     status = council.get_council_status()
-    print("Council Status:")
-    print("  Consensus:", status["consensus_verdict"])
-    print("  Headline:", status["consensus_headline"])
-    print("  Account Balance:", status["account"]["balance"])
+    print("Council Status for Dominion Markets:")
+    print("  Login:", status["account"]["login"])
+    print("  Server:", status["account"]["server"])
+    print("  Broker:", status["account"]["broker"])
+    print("  Symbol:", status["account"]["symbol"])
+    print("  Balance:", status["account"]["balance"])
     print("  Terminal Connected:", status["account"]["terminal_connected"])
     print("  Algo Allowed:", status["account"]["algo_trading_allowed"])
-    print("  Agents Count:", len(status["agents"]))
