@@ -806,6 +806,17 @@ class SignalEngine:
                                 sig.take_profit_2 = round(sig.entry_price - (risk * 3.0), 2)
 
                         self.signals.append(sig)
+
+                        # 7-AI QUANT COUNCIL & MT5 FULL AUTO EXECUTION HOOK
+                        if getattr(sig, 'is_institutional_a_plus', False):
+                            try:
+                                from core.council_engine import QuantCouncilEngine
+                                c_inst = QuantCouncilEngine.get_instance()
+                                if c_inst and c_inst.mode == 'FULL_AUTO' and not c_inst.kill_switch_active:
+                                    print(f"🚀 [7-AI COUNCIL AUTO-EXECUTION] Sending {sig.action} {sig.symbol} to MT5...")
+                                    c_inst.execute_council_trade(sig.to_dict())
+                            except Exception as ce:
+                                print(f"Council auto-execution error: {ce}")
                         print(f"[{sig.strength_grade} ({sig.confidence_score}%)] {sig.action} on {sig.symbol} [{sig.timeframe.upper()}] via {sig.strategy_name} @ {sig.entry_price} (Closed: {close_time_str} | Pattern: {sig.confirmation_pattern})")
 
     def add_demo_signal(self):

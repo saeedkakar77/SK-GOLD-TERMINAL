@@ -43,6 +43,14 @@ try:
 except Exception:
     pass
 
+# Initialize 7-AI Quant Council & MT5 Execution Bridge
+try:
+    from core.council_engine import QuantCouncilEngine
+    council = QuantCouncilEngine.get_instance()
+except Exception as e:
+    council = None
+    print(f"Warning: Could not initialize QuantCouncilEngine: {e}")
+
 PORT = int(os.environ.get("PORT", 5000))
 HTML_PATH = os.path.join(os.path.dirname(__file__), "templates", "index.html")
 
@@ -158,6 +166,19 @@ class TradingAppHandler(BaseHTTPRequestHandler):
                 self._send_json({"status": "ok", "cme": cme_data})
             elif self.path == "/api/bias":
                 self._send_json(engine.get_bias_report())
+            elif self.path == "/api/council/status":
+                if council:
+                    bias = engine.cached_bias or engine.get_bias_report()
+                    from core.cme_fetcher import CMEGoldDataFetcher
+                    cme = CMEGoldDataFetcher.get_cme_analysis()
+                    self._send_json(council.get_council_status(bias, cme))
+                else:
+                    self._send_json({"error": "Council engine not loaded"})
+            elif self.path == "/api/mt5/status":
+                if council:
+                    self._send_json(council.get_mt5_health(force=True))
+                else:
+                    self._send_json({"ok": False, "error": "Council engine not loaded"})
             elif self.path == "/api/pinescript":
                 pine_file = os.path.join(os.path.dirname(__file__), "SK_PERFECT_ENTRY_WITH_LIVE_PNL_TRADINGVIEW.pine")
                 script_txt = ""
@@ -305,6 +326,48 @@ self.addEventListener('fetch', function(e) {});"""
                                 break
                     engine.set_pair_status(symbol, enabled if enabled is not None else True)
                 self._send_json({"status": "ok", "symbol": symbol, "enabled": enabled})
+
+            elif self.path == "/api/council/mode":
+                if council:
+                    mode = payload.get("mode", "SEMI_AUTO")
+                    self._send_json({"status": "ok", "mode": council.set_mode(mode)})
+                else:
+                    self._send_json({"status": "error", "message": "Council not loaded"})
+
+            elif self.path == "/api/council/risk":
+                if council:
+                    risk_pct = float(payload.get("risk_pct", 1.0))
+                    self._send_json({"status": "ok", "risk_pct": council.set_risk(risk_pct)})
+                else:
+                    self._send_json({"status": "error", "message": "Council not loaded"})
+
+            elif self.path == "/api/mt5/test_order":
+                if council:
+                    res = council.send_test_order()
+                    self._send_json(res)
+                else:
+                    self._send_json({"ok": False, "error": "Council not loaded"})
+
+            elif self.path == "/api/mt5/kill_switch":
+                if council:
+                    res = council.emergency_kill_switch()
+                    self._send_json(res)
+                else:
+                    self._send_json({"status": "error", "message": "Council not loaded"})
+
+            elif self.path == "/api/mt5/reset_kill":
+                if council:
+                    res = council.reset_kill_switch()
+                    self._send_json({"status": "ok", "reset": res})
+                else:
+                    self._send_json({"status": "error", "message": "Council not loaded"})
+
+            elif self.path == "/api/mt5/execute":
+                if council:
+                    res = council.execute_council_trade(payload)
+                    self._send_json(res)
+                else:
+                    self._send_json({"ok": False, "message": "Council not loaded"})
             else:
                 self.send_error(404, "Endpoint not found")
         except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):

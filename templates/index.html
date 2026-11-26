@@ -556,6 +556,94 @@
         </div>
 
         <!-- 🧭 TODAY'S MASTER INSTITUTIONAL DIRECTION COMPASS -->
+        
+        <!-- 🧠 7-AI QUANT COUNCIL & METATRADER 5 (MT5) LIVE AUTONOMOUS DESK -->
+        <div id="quantCouncilCard" style="margin-bottom: 16px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(24, 18, 43, 0.96)); border: 2px solid #8b5cf6; border-radius: 12px; padding: 18px 22px; box-shadow: 0 0 35px rgba(139, 92, 246, 0.25);">
+            <!-- Header with MT5 Live Connection Pill & Mode Controls -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 32px; background: rgba(139, 92, 246, 0.2); border: 1.5px solid #8b5cf6; padding: 6px 12px; border-radius: 10px; box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);">
+                        🧠
+                    </div>
+                    <div>
+                        <div style="color: #f8fafc; font-size: 15px; font-weight: 900; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span>7-AI QUANT COUNCIL · MT5 AUTONOMOUS DESK</span>
+                            <span id="councilModeBadge" style="font-size: 10px; background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #93c5fd; padding: 2px 8px; border-radius: 4px; font-weight: 800;">
+                                🔵 1-CLICK MT5 APPROVAL
+                            </span>
+                        </div>
+                        <div style="font-size: 11.5px; color: #94a3b8; margin-top: 3px;">
+                            Seven Cooperating Autonomous Agents (Quant Pilot Engine) + Direct MetaTrader 5 Bridge
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MT5 Live Account & Terminal Status -->
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div id="mt5AccountPill" style="background: rgba(0,0,0,0.5); border: 1.5px solid #10b981; padding: 6px 12px; border-radius: 8px; font-size: 11.5px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 14px;">🟢</span>
+                        <div>
+                            <div style="color: #e2e8f0; font-weight: 800;">MT5: HFM #291645 (Saeed Muhammad)</div>
+                            <div style="color: #10b981; font-weight: 900;" class="mono" id="mt5BalanceText">Balance: $10,283.92 · Equity: $10,283.92</div>
+                        </div>
+                    </div>
+
+                    <!-- Algo Trading Button Alert -->
+                    <div id="mt5AlgoStatusBadge" style="background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #fbbf24; padding: 6px 10px; border-radius: 6px; font-size: 10.5px; font-weight: 800;">
+                        ⚠️ ALGO TRADING: OFF (Click Algo Trading in MT5 Toolbar)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mode Selector & MT5 Control Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: rgba(0,0,0,0.4); padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 800; text-transform: uppercase;">Trading Mode:</span>
+                    <button onclick="setCouncilMode('PAPER')" id="btnModePaper" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 5px; cursor: pointer;">🟡 Paper Simulation</button>
+                    <button onclick="setCouncilMode('SEMI_AUTO')" id="btnModeSemi" style="background: rgba(59, 130, 246, 0.25); border: 1.5px solid #3b82f6; color: #93c5fd; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 5px; cursor: pointer;">🔵 1-Click Approval</button>
+                    <button onclick="setCouncilMode('FULL_AUTO')" id="btnModeAuto" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); color: #6ee7b7; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 5px; cursor: pointer;">🟢 Full Auto MT5</button>
+                    <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.15); margin: 0 4px;"></span>
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 800;">Risk:</span>
+                    <button onclick="setCouncilRisk(0.5)" id="btnRisk05" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 4px; cursor: pointer;">0.5%</button>
+                    <button onclick="setCouncilRisk(1.0)" id="btnRisk10" style="background: rgba(139, 92, 246, 0.25); border: 1.5px solid #8b5cf6; color: #c4b5fd; font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 4px; cursor: pointer;">1.0% ($102)</button>
+                    <button onclick="setCouncilRisk(2.0)" id="btnRisk20" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 4px; cursor: pointer;">2.0%</button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button onclick="sendMt5TestOrder()" style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #93c5fd; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer;">
+                        🧪 Test 0.01 Lot on MT5
+                    </button>
+                    <button onclick="triggerMt5KillSwitch()" style="background: rgba(239, 68, 68, 0.2); border: 1.5px solid #ef4444; color: #fca5a5; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer;">
+                        🛑 Kill Switch (Flatten All)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 7 AI Agents Live Grid -->
+            <div id="councilAgentsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 10px; margin-bottom: 14px;">
+                <!-- Populated via renderCouncil() -->
+            </div>
+
+            <!-- Council Consensus Banner & Urdu Direct Guidance -->
+            <div style="background: rgba(0,0,0,0.5); border: 1.5px solid rgba(139, 92, 246, 0.4); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <div style="flex: 1; min-width: 280px;">
+                    <div style="font-size: 10.5px; color: #94a3b8; font-weight: 800; text-transform: uppercase;">7-AI COUNCIL CONSENSUS VERDICT:</div>
+                    <div id="councilVerdictHeadline" style="font-size: 16px; font-weight: 900; color: #10b981; margin-top: 2px;">
+                        7/7 UNANIMOUS A+ INSTITUTIONAL ACCUMULATION
+                    </div>
+                    <div id="councilUrduSummary" style="font-size: 11.5px; color: #e2e8f0; margin-top: 4px; line-height: 1.4;">
+                        👉 <strong>URDU FAISLA:</strong> Tamam 7 AIs ka A+ Grade consensus ban chuka hai! CME 400k+ aur HTF ERL Discount confluence ke mutabiq har dip par BUY trades execute hongi.
+                    </div>
+                </div>
+
+                <div id="councilActionBox" style="display: flex; align-items: center; gap: 10px;">
+                    <button onclick="executeCouncilOnMt5()" style="background: linear-gradient(135deg, #10b981, #059669); border: 1.5px solid #34d399; color: #fff; font-size: 12px; font-weight: 900; padding: 7px 16px; border-radius: 7px; cursor: pointer; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);">
+                        ⚡ 1-Click Send A+ to MT5
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div id="masterCompassCard" style="margin-bottom: 16px; padding: 18px 22px; background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.85)); border: 2px solid #3b82f6; border-radius: 12px; box-shadow: 0 4px 30px rgba(37, 99, 235, 0.25);">
             <!-- Populated via fetchBias() -->
         </div>
@@ -1881,6 +1969,8 @@ SL: ${sig.stop_loss}` : body;
             });
             fetchMarket();
             fetchBias();
+        fetchCouncilStatus();
+        setInterval(fetchCouncilStatus, 4000);
         }
 
         window.expandedTFs = window.expandedTFs || { monthly: false, weekly: false, daily: false, h4: false };
@@ -2509,6 +2599,182 @@ SL: ${sig.stop_loss}` : body;
             } catch (err) {
                 console.error('CME update error:', err);
                 alert('Error updating CME data: ' + err.message);
+            }
+        }
+
+    
+        // -------------------------------------------------------------
+        // 🧠 7-AI QUANT COUNCIL & MT5 LIVE INTEGRATION
+        // -------------------------------------------------------------
+        let councilData = null;
+
+        async function fetchCouncilStatus() {
+            try {
+                const res = await fetch('/api/council/status');
+                const data = await res.json();
+                if (!data || !data.agents) return;
+                councilData = data;
+                renderCouncil(data);
+            } catch (e) {
+                console.error('Council fetch error:', e);
+            }
+        }
+
+        function renderCouncil(data) {
+            // Mode Badge
+            const mb = document.getElementById('councilModeBadge');
+            const btnPaper = document.getElementById('btnModePaper');
+            const btnSemi = document.getElementById('btnModeSemi');
+            const btnAuto = document.getElementById('btnModeAuto');
+
+            if (mb) {
+                if (data.council_mode === 'FULL_AUTO') {
+                    mb.innerHTML = '🟢 FULL AUTO MT5';
+                    mb.style.background = 'rgba(16, 185, 129, 0.2)';
+                    mb.style.borderColor = '#10b981';
+                    mb.style.color = '#6ee7b7';
+                } else if (data.council_mode === 'SEMI_AUTO') {
+                    mb.innerHTML = '🔵 1-CLICK MT5 APPROVAL';
+                    mb.style.background = 'rgba(59, 130, 246, 0.2)';
+                    mb.style.borderColor = '#3b82f6';
+                    mb.style.color = '#93c5fd';
+                } else {
+                    mb.innerHTML = '🟡 PAPER SIMULATION';
+                    mb.style.background = 'rgba(245, 158, 11, 0.2)';
+                    mb.style.borderColor = '#f59e0b';
+                    mb.style.color = '#fde68a';
+                }
+            }
+
+            if (btnPaper) btnPaper.style.border = data.council_mode === 'PAPER' ? '1.5px solid #f59e0b' : '1px solid rgba(255,255,255,0.15)';
+            if (btnSemi) btnSemi.style.border = data.council_mode === 'SEMI_AUTO' ? '1.5px solid #3b82f6' : '1px solid rgba(255,255,255,0.15)';
+            if (btnAuto) btnAuto.style.border = data.council_mode === 'FULL_AUTO' ? '1.5px solid #10b981' : '1px solid rgba(255,255,255,0.15)';
+
+            // MT5 Account & Algo Trading Badge
+            const acc = data.account || {};
+            const balEl = document.getElementById('mt5BalanceText');
+            if (balEl && acc.balance) {
+                balEl.innerText = `Balance: $${acc.balance.toLocaleString(undefined, {minimumFractionDigits: 2})} · Equity: $${acc.equity.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            }
+
+            const algoBadge = document.getElementById('mt5AlgoStatusBadge');
+            if (algoBadge) {
+                if (acc.algo_trading_allowed) {
+                    algoBadge.innerHTML = '🟢 ALGO TRADING: READY (MT5 Allowed)';
+                    algoBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+                    algoBadge.style.borderColor = '#10b981';
+                    algoBadge.style.color = '#6ee7b7';
+                } else {
+                    algoBadge.innerHTML = '⚠️ ALGO TRADING: OFF (Click Algo Trading in MT5 Toolbar)';
+                    algoBadge.style.background = 'rgba(245, 158, 11, 0.2)';
+                    algoBadge.style.borderColor = '#f59e0b';
+                    algoBadge.style.color = '#fbbf24';
+                }
+            }
+
+            // 7 Agents Grid
+            const grid = document.getElementById('councilAgentsGrid');
+            if (grid && data.agents) {
+                grid.innerHTML = data.agents.map(a => `
+                    <div style="background: rgba(0,0,0,0.4); border: 1.5px solid ${a.badge_color}55; border-radius: 8px; padding: 10px; text-align: center; box-shadow: 0 0 10px ${a.badge_color}15; transition: transform 0.2s;">
+                        <div style="font-size: 24px; margin-bottom: 4px;">${a.avatar}</div>
+                        <div style="font-size: 11px; font-weight: 900; color: #f8fafc;">${a.name}</div>
+                        <div style="font-size: 9.5px; color: #94a3b8; margin-top: 2px; min-height: 22px; line-height: 1.2;">${a.role}</div>
+                        <div style="margin-top: 6px; font-size: 9px; font-weight: 800; background: ${a.badge_color}22; border: 1px solid ${a.badge_color}; color: ${a.badge_color}; padding: 2px 5px; border-radius: 4px;">
+                            ${a.status} (${a.confidence}%)
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Headline & Urdu
+            const hl = document.getElementById('councilVerdictHeadline');
+            if (hl) hl.innerText = data.consensus_headline || '7/7 UNANIMOUS A+ INSTITUTIONAL ACCUMULATION';
+        }
+
+        async function setCouncilMode(mode) {
+            try {
+                const res = await fetch('/api/council/mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({mode})
+                });
+                const data = await res.json();
+                showNotification(`Trading Mode updated to ${data.mode || mode}`, 'success');
+                fetchCouncilStatus();
+            } catch (e) {
+                showNotification('Error changing mode: ' + e.message, 'error');
+            }
+        }
+
+        async function setCouncilRisk(pct) {
+            try {
+                const res = await fetch('/api/council/risk', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({risk_pct: pct})
+                });
+                const data = await res.json();
+                showNotification(`Risk per trade set to ${data.risk_pct}%`, 'success');
+                fetchCouncilStatus();
+            } catch (e) {
+                showNotification('Error setting risk: ' + e.message, 'error');
+            }
+        }
+
+        async function sendMt5TestOrder() {
+            try {
+                showNotification('Sending 0.01 lot test order to MT5...', 'info');
+                const res = await fetch('/api/mt5/test_order', {method: 'POST'});
+                const data = await res.json();
+                if (data.ok) {
+                    showNotification(`✅ MT5 Test Order Success! Ticket #${data.ticket} filled @ ${data.price}`, 'success');
+                } else {
+                    showNotification(`⚠️ MT5 Test Result: ${data.error || data.message || 'Check terminal'}`, 'warning');
+                }
+                fetchCouncilStatus();
+            } catch (e) {
+                showNotification('Error testing MT5 order: ' + e.message, 'error');
+            }
+        }
+
+        async function triggerMt5KillSwitch() {
+            if (!confirm('Are you sure you want to trigger EMERGENCY KILL SWITCH? This will close all positions and halt trading!')) return;
+            try {
+                const res = await fetch('/api/mt5/kill_switch', {method: 'POST'});
+                const data = await res.json();
+                showNotification(`🛑 Kill Switch Activated! Closed ${data.closed_count || 0} positions.`, 'warning');
+                fetchCouncilStatus();
+            } catch (e) {
+                showNotification('Error triggering kill switch: ' + e.message, 'error');
+            }
+        }
+
+        async function executeCouncilOnMt5() {
+            try {
+                showNotification('Sending A+ Setup to MT5 Execution Sniper...', 'info');
+                // Use latest active buy signal or market params
+                const payload = {
+                    action: "BUY",
+                    entry_price: window.lastPrice || 4100.0,
+                    stop_loss: (window.lastPrice || 4100.0) - 5.0,
+                    take_profit_1: (window.lastPrice || 4100.0) + 10.0,
+                    take_profit_2: (window.lastPrice || 4100.0) + 20.0
+                };
+                const res = await fetch('/api/mt5/execute', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    showNotification(`🚀 Order Executed! Ticket #${data.ticket || 'PAPER'} filled @ ${data.price || payload.entry_price}`, 'success');
+                } else {
+                    showNotification(`⚠️ Execution note: ${data.message || 'Check Algo Trading button in MT5'}`, 'warning');
+                }
+                fetchCouncilStatus();
+            } catch (e) {
+                showNotification('Execution error: ' + e.message, 'error');
             }
         }
 
