@@ -1,81 +1,137 @@
-# 👑 SK Institutional Gold Trading Terminal (V2.2)
-
-> **24/7 Institutional Gold (XAUUSD) Real-Time Scanner**  
-> Powered by 16 Smart Money Concepts (SMC) & ICT Algorithms, TradingView Pro Live Chart, and TradeNuro-Style Audio & Push Notifications.
+# 👑 SK Institutional Gold Terminal (V2.3)
+**17 SMC Strategies + Hunter AI · XAUUSD Exclusive · 7-AI Council**
 
 ---
 
-## 🌟 Key Features
+## 🚀 Quick Start
 
-1. **👑 100% Pure Gold (XAUUSD) Focus:**
-   * Precision scanning engineered exclusively for Spot Gold & Futures.
-   * Multi-timeframe execution: M3, M5, M15, M30, H1, H4, Daily, Weekly, Monthly.
+```powershell
+cd C:\Users\princ\.gemini\antigravity\scratch\trading_signal_app
+python app.py
+```
 
-2. **📊 TradingView Pro Advanced Live Chart:**
-   * Embedded official real-time TradingView Chart (`OANDA:XAUUSD`).
-   * Complete professional technical drawing tools toolbar (Trendlines, Fibonacci, Pitchforks, Zones).
-   * Multiple timeframe switching directly inside the chart.
-   * Pre-configured RSI and MACD indicators with custom indicator support.
-
-3. **⚙️ 16 SMC Institutional Strategies Daba (Popup Box):**
-   * Neatly organized into a popup modal drawer so your chart view remains clutter-free.
-   * Individual ON/OFF switches for each strategy.
-   * Quick `ALL ON` and `ALL OFF` master toggles.
-   * Strategies include:
-     1. True Order Block (OB) Retest with FVG Origin
-     2. Fair Value Gap (FVG) 50% CE Retest
-     3. SMT Divergence (Gold vs Silver / DXY)
-     4. Session Liquidity Sweep (Turtle Soup)
-     5. HTF Major Liquidity Sweep (1H, 4H, 1D)
-     6. EMA 144 Channel Retest + 5/8/13/21 Cross
-     7. Price Action Structure: IDM + Valid OB (OTE)
-     8. SMC Structure: IDM OB & EXT OB
-     9. DEMA 21/89 Cross & Retest (M5 / M15)
-     10. MSNR: CL, OCL, SBR & RBS Flips (M30 - Monthly)
-     11. Cascaded WMA Directional Volume Divergence
-     12. AOX Model: NY Expansion + Mandatory Vol Div (M5)
-     13. CRT Setup: C1-C2-C3 Candle Range Theory Multi-TF
-     14. EF Setup: Failed Engulfing Retest + Vol Div
-     15. BBMA Oma Ally Multi-TF Triads (REM, RRE, REE, RMEE)
-     16. Unicorn Setup: Breaker Block + iFVG + Multi-Candle Confirmation
-
-4. **🔔 TradeNuro Audio & Push Notification System:**
-   * Multi-tone institutional chime synthesis (Web Audio API) for Buy, Sell, and TP hits.
-   * Hardware vibration on mobile phones (`navigator.vibrate`).
-   * Sliding in-app notification banner at the top of the terminal.
-   * Background Push Notifications via Service Worker (`sw.js`).
-   * Win/Loss History Tracker with TP1 (1:1.5 RR) and TP2 (1:3.0 RR) performance scorecard.
-
-5. **📱 Mobile Ready (Progressive Web App):**
-   * Open the link on any Android or iPhone and tap **"Add to Home Screen"** or **"Install App"**.
-   * Runs in full-screen standalone mode like a native app.
+Dashboard opens at: `http://localhost:5000`
 
 ---
 
-## 🚀 How to Run Locally
+## 🎯 Hunter AI Bias Bar (Main Feature)
 
-```bash
-# 1. Clone repository
-git clone https://github.com/saeedkakar77/SK-GOLD-TERMINAL.git
-cd SK-GOLD-TERMINAL
+The dashboard now shows **one clear bias** at the top — no confusion:
 
-# 2. Install dependencies (Optional / Minimal)
-pip install -r requirements.txt
+| Element | Description |
+|---|---|
+| 🟢 **BUY % bar** | Live probability of bullish move today |
+| 🔴 **SELL %** | Live probability of bearish move |
+| **Urdu Reason** | Plain-language explanation below the bar |
+| **CRT Row** | Previous Day High/Low + Previous Week High/Low |
 
-# 3. Start Terminal Server
-python server.py
-# Or double-click "run_online_worldwide.bat" on Windows
+**Example output:**
+> `🟢 AAJ BUY PREFER KAREIN (61% BUY / 39% SELL)`
+
+The Hunter AI reads:
+- **Daily CRT** (Prev Day High/Low breakout)
+- **Weekly CRT** (Prev Week High/Low range)
+- **Daily & Weekly HTF Bias**
+- **All 17 Strategy votes** (Bull% vs Bear%)
+
+---
+
+## 📊 Show Detailed Analysis Toggle
+
+Click **"📊 Show Detailed Analysis"** button to expand:
+- 🏛️ CME COMEX Gold Open Interest card
+- 4-Timeframe Bias grid (Monthly / Weekly / Daily / H4)
+- All 17 strategy live votes breakdown
+
+Click **"🔼 Hide Detailed Analysis"** to collapse and keep dashboard clean.
+
+---
+
+## 🤖 17 Institutional SMC Strategies
+
+| # | Strategy | Type |
+|---|---|---|
+| 1 | CME Open Interest (400K Benchmark) | Market Structure |
+| 2 | FVG (Fair Value Gap) | Price Action |
+| 3 | Order Block (OB) | Smart Money |
+| 4 | Unicorn Breaker | Advanced SMC |
+| 5 | CRT (Candle Range Theory) | Range |
+| 6 | Liquidity Sweep | Liquidity |
+| 7 | SMT (Smart Money Tool) | Divergence |
+| 8 | AOX | Momentum |
+| 9 | BBMA (Bollinger Band Moving Avg) | Trend |
+| 10 | DEMA (Double EMA) | Trend |
+| 11 | MSNR | Session |
+| 12 | IDM (Inducement) | Liquidity |
+| 13 | EF (Equal Highs/Lows) | Liquidity |
+| 14 | Vol Div (Volume Divergence) | Volume |
+| 15 | HTF Liquidity | Multi-TF |
+| 16 | SMC-IDM-EXT | Advanced SMC |
+| 17 | **Quant Pilot 7-AI Liquidity Sweep & Displacement** | AI Composite |
+
+---
+
+## 🛡️ 7-AI Council
+
+| Agent | Role |
+|---|---|
+| 📡 AI 1: Scout | Live market feed & spread inspector |
+| 🗺️ AI 2: Cartographer | Liquidity pool & HTF range mapper |
+| 🎯 AI 3: Hunter | 17-strategy A+ signal scanner |
+| 🔬 AI 4: Analyst | CME 400K+ whale flow scorer |
+| 🛡️ AI 5: Guardian | Capital & drawdown protector |
+| ⚡ AI 6: Executioner | Direct MT5 order sniper |
+| 📜 AI 7: Chronicler | Trade journal & auditor |
+
+---
+
+## ⚙️ Trading Modes
+
+| Mode | Description |
+|---|---|
+| 🟡 Paper Simulation | No real orders — test only |
+| 🔵 1-Click Approval | Manual confirm before MT5 execution |
+| 🟢 Full Auto MT5 | Auto-fire on every A+ signal (requires Algo Trading ON in MT5) |
+
+> ⚠️ **MT5 Algo Trading must be manually enabled in the terminal** — it is never auto-enabled by this app.
+
+---
+
+## 📡 Key API Endpoints
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/council/status` | Full 7-AI council state + Hunter briefing (`buy_pct`, `sell_pct`) |
+| `GET /api/bias` | 4-TF HTF bias + CME + 16-strategy compass |
+| `GET /api/signals` | Active A+ signals + history |
+| `GET /api/market` | Live XAUUSD price, spread, session |
+| `GET /api/poll` | Unified lightweight fast-poll (every 2s) |
+| `POST /api/mt5/execute` | Submit order to MT5 |
+| `POST /api/cme/update` | Update CME OI data manually |
+
+---
+
+## 💾 D-Drive Backup
+
+Backups are stored at: `D:\SK_Gold_Backups\`
+
+Run backup manually:
+```powershell
+python backup_battle.py
 ```
 
 ---
 
-## 🌐 Online Access
+## 🔀 Git History
 
-* **Local PC:** `http://127.0.0.1:5000`
-* **Local Wi-Fi:** `http://<your-local-ip>:5000`
-* **Worldwide Online:** Works seamlessly with Ngrok, Localhost.run, or Docker cloud providers.
+```
+2c65f8a feat: Add Hunter AI Daily/Weekly CRT & Bias BUY/SELL Briefing on Dashboard
+df4c6ca feat: Add 17th strategy (Quant Pilot 7-AI Liquidity Sweep & Displacement)
+a5eb54f feat: 7-AI council now reads live 16-SMC+CME rules
+dc8d124 feat: Add dedicated MT5 Algo Accounts & %/$ Risk Settings page
+7adba4a revert: Restore original SK Gold Terminal design
+```
 
 ---
 
-## 📜 License
-Private & Proprietary © Saeed Kakar. All Rights Reserved.
+*Last updated: 2026-11-27 · V2.3 · 17 Strategies + Hunter AI Bias Bar*
