@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SK Gold Terminal — MT5 Algo & Risk Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #060910;
+            --card: #0c1220;
+            --card-2: #11192c;
+            --border: rgba(255, 255, 255, 0.09);
+            --gold: #f59e0b;
+            --emerald: #10b981;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --purple: #8b5cf6;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #111c33 0%, var(--bg) 55%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .container { max-width: 1180px; margin: 0 auto; }
+
+        /* Header */
+        .topbar {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+            background: rgba(12, 18, 32, 0.9); border: 1px solid rgba(245, 158, 11, 0.35);
+            border-radius: 14px; padding: 14px 20px; margin-bottom: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand-icon {
+            width: 42px; height: 42px; border-radius: 10px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            display: flex; align-items: center; justify-content: center; font-size: 22px; color: #000; font-weight: 900;
+        }
+        .back-btn {
+            text-decoration: none; color: #e2e8f0; background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border); padding: 8px 14px; border-radius: 8px;
+            font-size: 12.5px; font-weight: 700; transition: 0.2s;
+        }
+        .back-btn:hover { background: rgba(245,158,11,0.18); border-color: var(--gold); color: #fcd34d; }
+
+        /* Grid */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .card {
+            background: linear-gradient(160deg, var(--card), var(--card-2));
+            border: 1px solid var(--border);
+            border-radius: 14px; padding: 18px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        }
+        .card-title {
+            font-size: 15px; font-weight: 800; color: #f8fafc;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+        }
+        .sub-hint { font-size: 11.5px; color: var(--muted); margin-bottom: 12px; line-height: 1.5; }
+
+        /* Status Bar */
+        .status-strip {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 10px;
+            margin-bottom: 18px;
+        }
+        .stat-box {
+            background: rgba(0,0,0,0.45); border: 1px solid var(--border);
+            border-radius: 10px; padding: 11px 14px;
+        }
+        .stat-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+        .stat-val { font-size: 14px; font-weight: 800; color: #f8fafc; }
+
+        /* Forms */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+        .field { display: flex; flex-direction: column; gap: 5px; }
+        .field.full { grid-column: 1 / -1; }
+        .field label { font-size: 11.5px; color: #cbd5e1; font-weight: 700; }
+        .field input, .field select {
+            background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255,255,255,0.14);
+            color: #fff; padding: 9px 11px; border-radius: 8px; font-size: 13px;
+            outline: none; transition: border-color 0.2s;
+        }
+        .field input:focus, .field select:focus { border-color: var(--gold); }
+
+        /* Buttons & Pills */
+        .btn {
+            border: none; border-radius: 8px; padding: 9px 14px; font-size: 12.5px;
+            font-weight: 800; cursor: pointer; transition: 0.18s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-gold { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
+        .btn-gold:hover { filter: brightness(1.08); }
+        .btn-green { background: rgba(16, 185, 129, 0.2); border: 1px solid var(--emerald); color: #6ee7b7; }
+        .btn-green:hover { background: rgba(16, 185, 129, 0.35); }
+        .btn-blue { background: rgba(59, 130, 246, 0.2); border: 1px solid var(--blue); color: #93c5fd; }
+        .btn-blue:hover { background: rgba(59, 130, 246, 0.35); }
+        .btn-red { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--red); color: #fca5a5; }
+        .btn-red:hover { background: rgba(239, 68, 68, 0.35); }
+        .btn-ghost { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: #cbd5e1; }
+        .btn-ghost:hover { background: rgba(255,255,255,0.12); }
+
+        .seg-wrap {
+            display: inline-flex; background: rgba(0,0,0,0.55); border: 1px solid var(--border);
+            border-radius: 9px; padding: 3px; gap: 4px;
+        }
+        .seg-btn {
+            border: none; background: transparent; color: var(--muted); padding: 7px 14px;
+            border-radius: 7px; font-size: 12px; font-weight: 800; cursor: pointer;
+        }
+        .seg-btn.active { background: var(--gold); color: #000; }
+        .seg-btn.active-blue { background: var(--blue); color: #fff; }
+        .seg-btn.active-green { background: var(--emerald); color: #000; }
+
+        .preset-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .preset-pill {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+            color: #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 11.5px;
+            font-weight: 700; cursor: pointer;
+        }
+        .preset-pill:hover { border-color: var(--gold); color: #fcd34d; }
+
+        .preview-box {
+            margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+            background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35);
+            font-size: 12px; color: #a7f3d0; font-weight: 600;
+        }
+
+        /* Accounts List */
+        .acc-list { display: flex; flex-direction: column; gap: 10px; }
+        .acc-item {
+            background: rgba(0,0,0,0.45); border: 1px solid var(--border);
+            border-radius: 10px; padding: 12px 14px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .acc-item.active {
+            border-color: var(--emerald);
+            background: rgba(16, 185, 129, 0.08);
+        }
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 800;
+        }
+        .badge-green { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid var(--emerald); }
+        .badge-amber { background: rgba(245,158,11,0.2); color: #fcd34d; border: 1px solid var(--gold); }
+        .badge-red { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid var(--red); }
+
+        #toast {
+            position: fixed; bottom: 22px; right: 22px; z-index: 9999;
+            background: #0f172a; border: 1px solid var(--gold); color: #fff;
+            padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 700;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6); display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Top Header -->
+    <div class="topbar">
+        <div class="brand">
+            <div class="brand-icon">⚙️</div>
+            <div>
+                <div style="font-size: 17px; font-weight: 900; letter-spacing: 0.4px;">MT5 ALGO TRADING & RISK CONTROL</div>
+                <div style="font-size: 11.5px; color: var(--muted);">Koi bhi MT5 account add/switch karein aur Risk % ya $ khud set karein</div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-ghost" onclick="loadSettings()">🔄 Refresh MT5</button>
+            <a href="/" class="back-btn">← Back to SK Gold Terminal</a>
+        </div>
+    </div>
+
+    <!-- Live MT5 Status Strip -->
+    <div class="status-strip">
+        <div class="stat-box">
+            <div class="stat-label">Active Account</div>
+            <div class="stat-val" id="stAccount">Loading...</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Live Balance / Equity</div>
+            <div class="stat-val mono" style="color: var(--emerald);" id="stBalance">$0.00</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Terminal & Algo Button</div>
+            <div class="stat-val" id="stAlgo">Checking...</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Current Risk Per Trade</div>
+            <div class="stat-val mono" style="color: var(--gold);" id="stRisk">1.0%</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Trading Mode</div>
+            <div class="stat-val" id="stMode">SEMI_AUTO</div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <!-- LEFT: Custom Risk Settings (% and $) + Algo Mode -->
+        <div class="card">
+            <div class="card-title">
+                <span>🎯 Risk & Algo Mode Settings (% aur $ Dono)</span>
+                <span class="badge badge-amber" id="killBadge">KILL SWITCH: CLEAR</span>
+            </div>
+            <p class="sub-hint">
+                Aap apna risk <b>Percent (%)</b> mein bhi rakh sakte hain aur <b>Fixed Dollar ($)</b> mein bhi. Lot size khud-ba-khud SL distance ke mutabiq calculate hoga.
+            </p>
+
+            <!-- Trading Mode -->
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 11.5px; color: #cbd5e1; font-weight: 700; margin-bottom: 6px;">Execution Mode:</div>
+                <div class="seg-wrap" style="width: 100%; justify-content: space-between;">
+                    <button type="button" class="seg-btn" id="modePAPER" onclick="selectMode('PAPER')" style="flex:1;">🟡 Paper Sim</button>
+                    <button type="button" class="seg-btn" id="modeSEMI_AUTO" onclick="selectMode('SEMI_AUTO')" style="flex:1;">🔵 1-Click MT5</button>
+                    <button type="button" class="seg-btn" id="modeFULL_AUTO" onclick="selectMode('FULL_AUTO')" style="flex:1;">🟢 Full Auto MT5</button>
+                </div>
+            </div>
+
+            <!-- Risk Mode Toggle (% vs $) -->
+            <div style="margin-bottom: 14px;">
+                <div style="font-size: 11.5px; color: #cbd5e1; font-weight: 700; margin-bottom: 6px;">Risk Per Trade Unit (% ya $ chunein):</div>
+                <div class="seg-wrap">
+                    <button type="button" class="seg-btn" id="btnUnitPct" onclick="setRiskUnit('PERCENT')">% Percent of Balance</button>
+                    <button type="button" class="seg-btn" id="btnUnitDollar" onclick="setRiskUnit('DOLLAR')">$ Fixed Dollar Amount</button>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="field" id="wrapPct">
+                    <label>Risk Per Trade (%)</label>
+                    <input type="number" step="0.1" min="0.1" max="10" id="inpRiskPct" value="1.0" oninput="updatePreview()">
+                    <div class="preset-row">
+                        <span class="preset-pill" onclick="setPctVal(0.5)">0.5%</span>
+                        <span class="preset-pill" onclick="setPctVal(1.0)">1.0%</span>
+                        <span class="preset-pill" onclick="setPctVal(1.5)">1.5%</span>
+                        <span class="preset-pill" onclick="setPctVal(2.0)">2.0%</span>
+                        <span class="preset-pill" onclick="setPctVal(3.0)">3.0%</span>
+                    </div>
+                </div>
+
+                <div class="field" id="wrapDollar">
+                    <label>Risk Per Trade ($ USD)</label>
+                    <input type="number" step="1" min="1" max="50000" id="inpRiskDollars" value="10" oninput="updatePreview()">
+                    <div class="preset-row">
+                        <span class="preset-pill" onclick="setDollarVal(5)">$5</span>
+                        <span class="preset-pill" onclick="setDollarVal(10)">$10</span>
+                        <span class="preset-pill" onclick="setDollarVal(25)">$25</span>
+                        <span class="preset-pill" onclick="setDollarVal(50)">$50</span>
+                        <span class="preset-pill" onclick="setDollarVal(100)">$100</span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>Daily Drawdown Kill Unit</label>
+                    <select id="inpDdMode" onchange="updatePreview()">
+                        <option value="PERCENT">% Percent of Balance</option>
+                        <option value="DOLLAR">$ Fixed Dollar Limit</option>
+                    </select>
+                </div>
+
+                <div class="field" id="wrapDdPct">
+                    <label>Daily DD Kill Limit (%)</label>
+                    <input type="number" step="0.5" min="0.5" max="25" id="inpDdPct" value="4.0" oninput="updatePreview()">
+                </div>
+
+                <div class="field" id="wrapDdDollar" style="display:none;">
+                    <label>Daily DD Kill Limit ($ USD)</label>
+                    <input type="number" step="5" min="5" max="100000" id="inpDdDollars" value="40" oninput="updatePreview()">
+                </div>
+
+                <div class="field">
+                    <label>Max Open Trades</label>
+                    <input type="number" step="1" min="1" max="20" id="inpMaxTrades" value="2">
+                </div>
+
+                <div class="field">
+                    <label>Minimum Risk:Reward (R:R)</label>
+                    <input type="number" step="0.5" min="1" max="10" id="inpMinRR" value="2.0">
+                </div>
+            </div>
+
+            <div class="preview-box" id="riskPreview">
+                Preview loading...
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;">
+                <button class="btn btn-gold" onclick="saveRiskSettings()">💾 Save Risk & Mode Settings</button>
+                <button class="btn btn-blue" onclick="testOrder()">🧪 Test 0.01 Lot</button>
+                <button class="btn btn-red" id="btnKill" onclick="toggleKillSwitch()">🛑 Kill Switch</button>
+            </div>
+        </div>
+
+        <!-- RIGHT: Add / Edit MT5 Account Manually -->
+        <div class="card">
+            <div class="card-title">
+                <span id="formTitle">➕ Add / Edit MT5 Account (Manual)</span>
+                <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 11px;" onclick="resetAccountForm()">Clear Form</button>
+            </div>
+            <p class="sub-hint">
+                Koi bhi MT5 broker account (Dominion, Exness, HFM, IC Markets, FundedNext, FTMO) yahan add karein. Agar MT5 terminal pehle se usi account par logged in hai toh password khali chhor sakte hain.
+            </p>
+
+            <input type="hidden" id="accId" value="">
+            <div class="form-grid">
+                <div class="field">
+                    <label>Account Label / Broker Name</label>
+                    <input type="text" id="accLabel" placeholder="e.g. Dominion Markets / Exness">
+                </div>
+                <div class="field">
+                    <label>MT5 Login (Account Number) *</label>
+                    <input type="number" id="accLogin" placeholder="e.g. 144880">
+                </div>
+                <div class="field">
+                    <label>MT5 Password (Optional if already open)</label>
+                    <input type="password" id="accPassword" placeholder="Leave blank to keep existing">
+                </div>
+                <div class="field">
+                    <label>MT5 Server Name *</label>
+                    <input type="text" id="accServer" placeholder="e.g. DominionMarkets-Live">
+                </div>
+                <div class="field">
+                    <label>Gold Symbol on Broker</label>
+                    <input type="text" id="accXau" value="XAUUSD.p" placeholder="XAUUSD.p / XAUUSD / XAUUSDm">
+                </div>
+                <div class="field">
+                    <label>Magic Number</label>
+                    <input type="number" id="accMagic" value="20260101">
+                </div>
+                <div class="field full">
+                    <label>MT5 Terminal Path (terminal64.exe)</label>
+                    <input type="text" id="accPath" value="C:\Program Files\HFM Metatrader 5\terminal64.exe">
+                </div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-green" onclick="saveAccount(true)">⚡ Save & Connect This Account</button>
+                <button class="btn btn-ghost" onclick="saveAccount(false)">💾 Save Only</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Saved MT5 Accounts List -->
+    <div class="card">
+        <div class="card-title">
+            <span>🏦 Saved MT5 Accounts (1-Click Switch)</span>
+            <span style="font-size: 11.5px; color: var(--muted);" id="accCount">0 accounts</span>
+        </div>
+        <div class="acc-list" id="accountsList">
+            <div style="color: var(--muted); font-size: 13px;">Loading saved accounts...</div>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+    let currentSettings = null;
+    let selectedMode = "SEMI_AUTO";
+    let selectedRiskUnit = "PERCENT";
+    let liveBalance = 1000.0;
+
+    function showToast(msg, isErr = false) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.style.borderColor = isErr ? "#ef4444" : "#10b981";
+        t.style.display = "block";
+        setTimeout(() => { t.style.display = "none"; }, 3500);
+    }
+
+    function selectMode(m) {
+        selectedMode = m;
+        ["PAPER", "SEMI_AUTO", "FULL_AUTO"].forEach(x => {
+            const btn = document.getElementById("mode" + x);
+            btn.className = "seg-btn";
+            if (x === m) {
+                btn.classList.add(m === "PAPER" ? "active" : (m === "SEMI_AUTO" ? "active-blue" : "active-green"));
+            }
+        });
+    }
+
+    function setRiskUnit(unit) {
+        selectedRiskUnit = unit;
+        document.getElementById("btnUnitPct").className = "seg-btn" + (unit === "PERCENT" ? " active" : "");
+        document.getElementById("btnUnitDollar").className = "seg-btn" + (unit === "DOLLAR" ? " active" : "");
+        document.getElementById("wrapPct").style.opacity = unit === "PERCENT" ? "1" : "0.45";
+        document.getElementById("wrapDollar").style.opacity = unit === "DOLLAR" ? "1" : "0.45";
+        updatePreview();
+    }
+
+    function setPctVal(v) {
+        setRiskUnit("PERCENT");
+        document.getElementById("inpRiskPct").value = v;
+        updatePreview();
+    }
+
+    function setDollarVal(v) {
+        setRiskUnit("DOLLAR");
+        document.getElementById("inpRiskDollars").value = v;
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const ddMode = document.getElementById("inpDdMode").value;
+        document.getElementById("wrapDdPct").style.display = ddMode === "PERCENT" ? "flex" : "none";
+        document.getElementById("wrapDdDollar").style.display = ddMode === "DOLLAR" ? "flex" : "none";
+
+        const bal = liveBalance > 0 ? liveBalance : 1000;
+        const pct = parseFloat(document.getElementById("inpRiskPct").value) || 1.0;
+        const dol = parseFloat(document.getElementById("inpRiskDollars").value) || 10.0;
+
+        let text = "";
+        if (selectedRiskUnit === "PERCENT") {
+            const calcDol = (bal * pct / 100).toFixed(2);
+            text = `📊 Percent Mode: ${pct}% of $${bal.toFixed(2)} = $${calcDol} risk per trade.`;
+        } else {
+            const calcPct = ((dol / bal) * 100).toFixed(2);
+            text = `💵 Fixed Dollar Mode: $${dol.toFixed(2)} risk per trade (${calcPct}% of $${bal.toFixed(2)} balance).`;
+        }
+        document.getElementById("riskPreview").textContent = text;
+    }
+
+    async function loadSettings() {
+        try {
+            const res = await fetch("/api/mt5/settings");
+            const data = await res.json();
+            currentSettings = data;
+
+            const h = data.health || {};
+            const acc = h.account || {};
+            const term = h.terminal || {};
+
+            liveBalance = parseFloat(acc.balance || 1000.0);
+            const equity = parseFloat(acc.equity || liveBalance);
+
+            document.getElementById("stAccount").textContent = acc.login
+                ? `#${acc.login} (${acc.server || ""})`
+                : `Configured #${(data.accounts[0] || {}).login || "--"}`;
+            document.getElementById("stBalance").textContent = `$${liveBalance.toFixed(2)} / $${equity.toFixed(2)}`;
+
+            const connected = !!h.connected;
+            const algoOn = !!term.trade_allowed;
+            document.getElementById("stAlgo").innerHTML = !connected
+                ? `<span style="color:#ef4444;">🔴 MT5 OFFLINE</span>`
+                : (algoOn
+                    ? `<span style="color:#10b981;">🟢 CONNECTED · ALGO ON</span>`
+                    : `<span style="color:#f59e0b;">🟡 CONNECTED · ALGO OFF</span>`);
+
+            document.getElementById("stMode").textContent = data.mode || "SEMI_AUTO";
+            document.getElementById("stRisk").textContent = data.risk_mode === "DOLLAR"
+                ? `$${Number(data.risk_dollars).toFixed(2)} (Fixed)`
+                : `${data.risk_pct}% ($${(liveBalance * data.risk_pct / 100).toFixed(2)})`;
+
+            const killActive = !!data.kill_switch_active;
+            const kb = document.getElementById("killBadge");
+            kb.textContent = killActive ? "KILL SWITCH: ACTIVE" : "KILL SWITCH: CLEAR";
+            kb.className = "badge " + (killActive ? "badge-red" : "badge-green");
+            document.getElementById("btnKill").textContent = killActive ? "🔓 Reset Kill Switch" : "🛑 Kill Switch";
+
+            selectMode(data.mode || "SEMI_AUTO");
+            setRiskUnit(data.risk_mode || "PERCENT");
+            document.getElementById("inpRiskPct").value = data.risk_pct ?? 1.0;
+            document.getElementById("inpRiskDollars").value = data.risk_dollars ?? 10.0;
+            document.getElementById("inpDdMode").value = data.daily_dd_mode || "PERCENT";
+            document.getElementById("inpDdPct").value = data.daily_dd_pct ?? 4.0;
+            document.getElementById("inpDdDollars").value = data.daily_dd_dollars ?? 40.0;
+            document.getElementById("inpMaxTrades").value = data.max_open_trades ?? 2;
+            document.getElementById("inpMinRR").value = data.min_rr ?? 2.0;
+
+            updatePreview();
+            renderAccounts(data.accounts || [], data.active_account_id);
+        } catch (e) {
+            showToast("Failed to load MT5 settings: " + e, true);
+        }
+    }
+
+    function renderAccounts(accounts, activeId) {
+        document.getElementById("accCount").textContent = `${accounts.length} saved`;
+        const wrap = document.getElementById("accountsList");
+        if (!accounts.length) {
+            wrap.innerHTML = `<div style="color:var(--muted);">No accounts saved yet.</div>`;
+            return;
+        }
+        wrap.innerHTML = accounts.map(a => {
+            const isAct = a.id === activeId;
+            return `
+            <div class="acc-item ${isAct ? 'active' : ''}">
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <span style="font-size:14px; font-weight:800;">${a.label || a.server}</span>
+                        <span class="mono" style="font-size:12px; color:#93c5fd;">#${a.login}</span>
+                        ${isAct ? '<span class="badge badge-green">ACTIVE</span>' : ''}
+                    </div>
+                    <div style="font-size:11.5px; color:var(--muted); margin-top:3px;">
+                        Server: <b>${a.server}</b> · Gold Symbol: <b class="mono">${a.xau_symbol}</b> · Magic: <span class="mono">${a.magic}</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    ${!isAct ? `<button class="btn btn-green" onclick="activateAccount('${a.id}')">⚡ Connect</button>` : ''}
+                    <button class="btn btn-ghost" onclick='editAccount(${JSON.stringify(a)})'>✏️ Edit</button>
+                    ${accounts.length > 1 ? `<button class="btn btn-red" onclick="deleteAccount('${a.id}')">🗑️</button>` : ''}
+                </div>
+            </div>`;
+        }).join("");
+    }
+
+    function editAccount(a) {
+        document.getElementById("formTitle").textContent = `✏️ Edit Account #${a.login}`;
+        document.getElementById("accId").value = a.id || "";
+        document.getElementById("accLabel").value = a.label || "";
+        document.getElementById("accLogin").value = a.login || "";
+        document.getElementById("accPassword").value = "";
+        document.getElementById("accServer").value = a.server || "";
+        document.getElementById("accXau").value = a.xau_symbol || "XAUUSD.p";
+        document.getElementById("accMagic").value = a.magic || 20260101;
+        document.getElementById("accPath").value = a.path || "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function resetAccountForm() {
+        document.getElementById("formTitle").textContent = "➕ Add / Edit MT5 Account (Manual)";
+        document.getElementById("accId").value = "";
+        document.getElementById("accLabel").value = "";
+        document.getElementById("accLogin").value = "";
+        document.getElementById("accPassword").value = "";
+        document.getElementById("accServer").value = "";
+        document.getElementById("accXau").value = "XAUUSD";
+        document.getElementById("accMagic").value = 20260101;
+    }
+
+    async function saveAccount(activateNow) {
+        const login = document.getElementById("accLogin").value.trim();
+        const server = document.getElementById("accServer").value.trim();
+        if (!login || !server) {
+            showToast("Login number aur Server name lazmi dalein!", true);
+            return;
+        }
+        const payload = {
+            id: document.getElementById("accId").value.trim() || `acc_${login}`,
+            label: document.getElementById("accLabel").value.trim() || server,
+            login: parseInt(login, 10),
+            password: document.getElementById("accPassword").value,
+            server: server,
+            xau_symbol: document.getElementById("accXau").value.trim() || "XAUUSD",
+            magic: parseInt(document.getElementById("accMagic").value || "20260101", 10),
+            path: document.getElementById("accPath").value.trim(),
+            activate: activateNow
+        };
+        const res = await fetch("/api/mt5/account/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showToast(activateNow ? `Account #${login} saved & connected!` : `Account #${login} saved!`);
+            resetAccountForm();
+            loadSettings();
+        } else {
+            showToast(data.error || "Failed to save account", true);
+        }
+    }
+
+    async function activateAccount(id) {
+        const res = await fetch("/api/mt5/account/activate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showToast("Switched MT5 account!");
+            loadSettings();
+        } else {
+            showToast(data.error || "Switch failed", true);
+        }
+    }
+
+    async function deleteAccount(id) {
+        if (!confirm("Is MT5 account ko list se delete karein?")) return;
+        const res = await fetch("/api/mt5/account/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showToast("Account deleted.");
+            loadSettings();
+        } else {
+            showToast(data.error || "Delete failed", true);
+        }
+    }
+
+    async function saveRiskSettings() {
+        const payload = {
+            mode: selectedMode,
+            risk_mode: selectedRiskUnit,
+            risk_pct: parseFloat(document.getElementById("inpRiskPct").value || "1.0"),
+            risk_dollars: parseFloat(document.getElementById("inpRiskDollars").value || "10.0"),
+            daily_dd_mode: document.getElementById("inpDdMode").value,
+            daily_dd_pct: parseFloat(document.getElementById("inpDdPct").value || "4.0"),
+            daily_dd_dollars: parseFloat(document.getElementById("inpDdDollars").value || "40.0"),
+            max_open_trades: parseInt(document.getElementById("inpMaxTrades").value || "2", 10),
+            min_rr: parseFloat(document.getElementById("inpMinRR").value || "2.0")
+        };
+        const res = await fetch("/api/mt5/risk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.ok) {
+            showToast("Risk & Algo settings saved!");
+            loadSettings();
+        } else {
+            showToast(data.error || "Failed to save risk settings", true);
+        }
+    }
+
+    async function testOrder() {
+        showToast("Sending 0.01 lot test order to MT5...");
+        const res = await fetch("/api/mt5/test_order", { method: "POST", body: "{}" });
+        const data = await res.json();
+        if (data.ok) {
+            showToast("Test order passed! Filled & closed.");
+        } else {
+            showToast("Test order: " + (data.error || data.message || "Failed"), true);
+        }
+    }
+
+    async function toggleKillSwitch() {
+        const isKill = currentSettings && currentSettings.kill_switch_active;
+        const url = isKill ? "/api/mt5/reset_kill" : "/api/mt5/kill_switch";
+        await fetch(url, { method: "POST", body: "{}" });
+        showToast(isKill ? "Kill Switch reset!" : "Kill Switch activated! All trades flattened.");
+        loadSettings();
+    }
+
+    loadSettings();
+</script>
+</body>
+</html>

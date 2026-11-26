@@ -609,7 +609,10 @@
                     <button onclick="setCouncilRisk(2.0)" id="btnRisk20" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #cbd5e1; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 4px; cursor: pointer;">2.0%</button>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <a href="/mt5-settings" target="_blank" style="text-decoration: none; background: rgba(245, 158, 11, 0.2); border: 1.5px solid #f59e0b; color: #fcd34d; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer;">
+                        ⚙️ MT5 Accounts & Risk (% / $)
+                    </a>
                     <button onclick="sendMt5TestOrder()" style="background: rgba(59, 130, 246, 0.2); border: 1px solid #3b82f6; color: #93c5fd; padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer;">
                         🧪 Test 0.01 Lot on MT5
                     </button>
@@ -2654,7 +2657,7 @@ SL: ${sig.stop_loss}` : body;
             const acc = data.account || {};
             const accTitle = document.getElementById('mt5AccountTitle');
             if (accTitle) {
-                accTitle.innerText = `Dominion Markets #${acc.login || 144880} (${acc.name || 'Saeed Muhammad'})`;
+                accTitle.innerText = `${acc.broker || 'MT5 Account'} #${acc.login || 144880} (${acc.name || 'Trader'})`;
             }
             const balEl = document.getElementById('mt5BalanceText');
             if (balEl && acc.balance !== undefined) {

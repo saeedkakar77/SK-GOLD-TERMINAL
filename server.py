@@ -117,6 +117,28 @@ class TradingAppHandler(BaseHTTPRequestHandler):
                         self.wfile.write(raw_content)
                 else:
                     self.send_error(404, "index.html template not found")
+            elif clean_path in ["/mt5-settings", "/algo-settings"]:
+                settings_html = os.path.join(os.path.dirname(__file__), "templates", "mt5_settings.html")
+                if os.path.exists(settings_html):
+                    with open(settings_html, "r", encoding="utf-8") as f:
+                        raw_content = f.read().encode("utf-8")
+                    accept_encoding = self.headers.get("Accept-Encoding", "")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("ngrok-skip-browser-warning", "true")
+                    self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                    if "gzip" in accept_encoding:
+                        compressed = gzip.compress(raw_content, compresslevel=6)
+                        self.send_header("Content-Encoding", "gzip")
+                        self.send_header("Content-Length", str(len(compressed)))
+                        self.end_headers()
+                        self.wfile.write(compressed)
+                    else:
+                        self.send_header("Content-Length", str(len(raw_content)))
+                        self.end_headers()
+                        self.wfile.write(raw_content)
+                else:
+                    self.send_error(404, "mt5_settings.html not found")
             elif clean_path == "/api/poll" or clean_path == "/api/state":
                 ip = get_local_ip()
                 online_url = None
@@ -177,6 +199,11 @@ class TradingAppHandler(BaseHTTPRequestHandler):
             elif self.path == "/api/mt5/status":
                 if council:
                     self._send_json(council.get_mt5_health(force=True))
+                else:
+                    self._send_json({"ok": False, "error": "Council engine not loaded"})
+            elif self.path == "/api/mt5/settings":
+                if council:
+                    self._send_json(council.get_settings())
                 else:
                     self._send_json({"ok": False, "error": "Council engine not loaded"})
             elif self.path == "/api/pinescript":
@@ -368,6 +395,26 @@ self.addEventListener('fetch', function(e) {});"""
                     self._send_json(res)
                 else:
                     self._send_json({"ok": False, "message": "Council not loaded"})
+            elif self.path == "/api/mt5/account/save":
+                if council:
+                    self._send_json(council.save_account(payload))
+                else:
+                    self._send_json({"ok": False, "error": "Council not loaded"})
+            elif self.path == "/api/mt5/account/activate":
+                if council:
+                    self._send_json(council.activate_account(str(payload.get("id", ""))))
+                else:
+                    self._send_json({"ok": False, "error": "Council not loaded"})
+            elif self.path == "/api/mt5/account/delete":
+                if council:
+                    self._send_json(council.delete_account(str(payload.get("id", ""))))
+                else:
+                    self._send_json({"ok": False, "error": "Council not loaded"})
+            elif self.path == "/api/mt5/risk":
+                if council:
+                    self._send_json(council.update_risk_settings(payload))
+                else:
+                    self._send_json({"ok": False, "error": "Council not loaded"})
             else:
                 self.send_error(404, "Endpoint not found")
         except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
