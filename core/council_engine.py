@@ -246,6 +246,168 @@ class QuantCouncilEngine:
 
         return state
 
+    def _build_hunter_crt_briefing(self, current_bias: Optional[Dict[str, Any]] = None, ls: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Hunter AI Daily Open Briefing:
+        Reads Daily + Weekly Bias AND Previous Day / Previous Week CRT (Candle Range Theory)
+        alongside all 17 SMC strategies to give a crystal-clear BUY vs SELL verdict for today.
+        """
+        import sys
+        sig_engine = None
+        for _, mod in sys.modules.items():
+            if hasattr(mod, "engine") and type(getattr(mod, "engine", None)).__name__ == "SignalEngine":
+                sig_engine = mod.engine
+                break
+
+        cb = current_bias or (sig_engine.cached_bias if sig_engine else None) or {}
+        tfs = cb.get("timeframes", {})
+        daily_bias = str(tfs.get("daily", {}).get("bias", "NEUTRAL")).upper()
+        weekly_bias = str(tfs.get("weekly", {}).get("bias", "NEUTRAL")).upper()
+        pm = cb.get("power_meter_16", {})
+        bull_pct = int(pm.get("bullish_pct", 50))
+        bear_pct = int(pm.get("bearish_pct", 50))
+
+        # Analyze Previous Day CRT & Previous Week CRT using live D1 & W1 candles
+        d_crt_signal = "RANGE"
+        d_crt_text = "Inside Previous Day Range (CRT Accumulation)"
+        pdh, pdl, pdc = 0.0, 0.0, 0.0
+        today_price = 0.0
+
+        w_crt_signal = "RANGE"
+        w_crt_text = "Inside Previous Week Range"
+        pwh, pwl = 0.0, 0.0
+
+        def _eval_crt(prev_c, cur_c, label_prev):
+            ph = float(prev_c.high)
+            pl = float(prev_c.low)
+            ch = float(cur_c.high)
+            cl = float(cur_c.low)
+            cc = float(cur_c.close)
+            if cl < pl and cc > pl:
+                return "BUY", f"BULLISH CRT: {label_prev} Low ({pl:.2f}) Swept & Reclaimed -> BUY"
+            if ch > ph and cc < ph:
+                return "SELL", f"BEARISH CRT: {label_prev} High ({ph:.2f}) Swept & Rejected -> SELL"
+            if cc > ph:
+                return "BUY", f"BULLISH EXPANSION: Closed above {label_prev} High ({ph:.2f})"
+            if cc < pl:
+                return "SELL", f"BEARISH EXPANSION: Closed below {label_prev} Low ({pl:.2f})"
+            if cl < pl:
+                return "SELL", f"Testing below {label_prev} Low ({pl:.2f}) — watch for reclaim or break"
+            if ch > ph:
+                return "BUY", f"Testing above {label_prev} High ({ph:.2f}) — watch for hold or sweep"
+            return "RANGE", f"Inside {label_prev} Range ({pl:.2f} - {ph:.2f}) — Wait for Sweep"
+
+        try:
+            if sig_engine and hasattr(sig_engine, "data_feed"):
+                d_candles = sig_engine.data_feed.get_candles("XAUUSD", "1d", count=10)
+                if d_candles and len(d_candles) >= 2:
+                    prev_d = d_candles[-2]
+                    cur_d = d_candles[-1]
+                    pdh, pdl, pdc = float(prev_d.high), float(prev_d.low), float(prev_d.close)
+                    today_price = float(cur_d.close)
+                    d_crt_signal, d_crt_text = _eval_crt(prev_d, cur_d, "Prev Day")
+
+                w_candles = sig_engine.data_feed.get_candles("XAUUSD", "1w", count=8)
+                if w_candles and len(w_candles) >= 2:
+                    prev_w = w_candles[-2]
+                    cur_w = w_candles[-1]
+                    pwh, pwl = float(prev_w.high), float(prev_w.low)
+                    w_crt_signal, w_crt_text = _eval_crt(prev_w, cur_w, "Prev Week")
+        except Exception as ex:
+            log.debug("CRT briefing candle error: %s", ex)
+
+        # Combine Daily Bias + Weekly Bias + Daily CRT + Weekly CRT + 17-Strategy Consensus
+        score = 0
+        if "BULL" in daily_bias or "BUY" in daily_bias:
+            score += 2
+        elif "BEAR" in daily_bias or "SELL" in daily_bias:
+            score -= 2
+
+        if "BULL" in weekly_bias or "BUY" in weekly_bias:
+            score += 2
+        elif "BEAR" in weekly_bias or "SELL" in weekly_bias:
+            score -= 2
+
+        if d_crt_signal == "BUY":
+            score += 2
+        elif d_crt_signal == "SELL":
+            score -= 2
+
+        if w_crt_signal == "BUY":
+            score += 1
+        elif w_crt_signal == "SELL":
+            score -= 1
+
+        if bull_pct >= 60:
+            score += 1
+        elif bear_pct >= 60:
+            score -= 1
+
+        if score >= 4:
+            action = "BUY ONLY"
+            action_urdu = "🟢 AAJ SIRF BUYING KAREIN (BUY ONLY)"
+            badge_color = "#10b981"
+            urdu_reason = (
+                f"Daily Bias ({daily_bias}), Weekly Bias ({weekly_bias}) aur Previous Day/Week CRT BUY side par hain "
+                f"(17 Strategies: {bull_pct}% Bullish). Aaj sirf Discount / PDL sweep par BUY setups lein!"
+            )
+        elif score <= -4:
+            action = "SELL ONLY"
+            action_urdu = "🔴 AAJ SIRF SELLING KAREIN (SELL ONLY)"
+            badge_color = "#ef4444"
+            urdu_reason = (
+                f"Daily Bias ({daily_bias}), Weekly Bias ({weekly_bias}) aur Previous Day/Week CRT SELL side par hain "
+                f"(17 Strategies: {bear_pct}% Bearish). Aaj sirf Premium / PDH sweep par SELL setups lein!"
+            )
+        elif score >= 1:
+            action = "BUY FAVORED"
+            action_urdu = "🟢 AAJ BUYING PREFER KAREIN (BUY FAVORED)"
+            badge_color = "#3b82f6"
+            urdu_reason = (
+                f"Daily ({daily_bias}) / Weekly ({weekly_bias}) aur CRT ka jhukao BUY ki taraf hai "
+                f"({bull_pct}% Bullish). A+ confirmation milne par BUY karein."
+            )
+        elif score <= -1:
+            action = "SELL FAVORED"
+            action_urdu = "🟠 AAJ SELLING PREFER KAREIN (SELL FAVORED)"
+            badge_color = "#f97316"
+            urdu_reason = (
+                f"Daily ({daily_bias}) / Weekly ({weekly_bias}) aur CRT ka jhukao SELL ki taraf hai "
+                f"({bear_pct}% Bearish). A+ confirmation milne par SELL karein."
+            )
+        else:
+            action = "WAIT / RANGE"
+            action_urdu = "🟡 WAIT / CONFIRMATION KA INTEZAR KAREIN"
+            badge_color = "#f59e0b"
+            urdu_reason = (
+                f"Daily ({daily_bias}) aur Weekly ({weekly_bias}) mixed hain aur price Prev Day Range "
+                f"({pdl:.2f} - {pdh:.2f}) ke andar hai. PDH ya PDL sweep hone ka intezar karein!"
+            )
+
+        return {
+            "action": action,
+            "action_urdu": action_urdu,
+            "badge_color": badge_color,
+            "score": score,
+            "daily_bias": daily_bias,
+            "weekly_bias": weekly_bias,
+            "daily_crt_signal": d_crt_signal,
+            "daily_crt_text": d_crt_text,
+            "pdh": round(pdh, 2),
+            "pdl": round(pdl, 2),
+            "pdc": round(pdc, 2),
+            "today_price": round(today_price, 2),
+            "weekly_crt_signal": w_crt_signal,
+            "weekly_crt_text": w_crt_text,
+            "pwh": round(pwh, 2),
+            "pwl": round(pwl, 2),
+            "strategies_total": 17,
+            "bull_pct": bull_pct,
+            "bear_pct": bear_pct,
+            "urdu_reason": urdu_reason,
+            "updated_at": time.strftime("%H:%M:%S")
+        }
+
     # -------------------------------------------------------------------------
     # MT5 HEALTH & ACCOUNT
     # -------------------------------------------------------------------------
@@ -290,6 +452,7 @@ class QuantCouncilEngine:
 
         # Pull live scan state from running SignalEngine
         ls = self._build_live_scan_state()
+        hunter_briefing = self._build_hunter_crt_briefing(current_bias, ls)
 
         # Merge with passed-in CME / bias if available
         cme_verdict = cme_report.get("verdict", ls["cme_verdict"]) if cme_report else ls["cme_verdict"]
@@ -560,6 +723,7 @@ class QuantCouncilEngine:
                 "h4_bias": h4_bias,
                 "last_a_plus": last_a_plus,
             },
+            "hunter_briefing": hunter_briefing,
             "account": {
                 "id": self.settings.get("active_account_id", "acc_144880"),
                 "login": login_num,
